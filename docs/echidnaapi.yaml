@@ -1,0 +1,533 @@
+openapi: "3.0.0"
+
+info:
+  version: 1.0.0
+  title: Echidna API
+  license:
+    name: MIT
+
+servers:
+  - url: http://{host}:{port}/
+    description: Echidna API
+    variables:
+      host:
+        default: localhost
+      port:
+        default: '8888'
+
+paths:
+  /terminals:
+    get:
+      summary: List terminals
+      operationId: getTerminals
+      tags:
+        - terminals
+      responses:
+        '200':
+          description: A paged array of terminals
+          content:
+            application/json:    
+              schema:
+                $ref: "#/components/schemas/Terminals"
+    post:
+      summary: Create a terminal
+      operationId: postTerminal
+      tags:
+        - terminals
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TerminalPost'
+        required: true
+      responses:
+        '200':
+          description: Null response
+          content:
+            application/json:
+              schema:
+                type:
+                  object
+                oneOf:
+                  - $ref: "#/components/schemas/Terminal"
+                  - {}
+  /terminals/{terminalId}:
+    delete:
+      summary: Delete a terminal
+      operationId: deleteTerminal
+      tags:
+        - terminals
+      parameters:
+        - name: terminalId
+          in: path
+          required: true
+          description: The ID number of the terminal to delete
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Null response
+          content:
+            application/json:
+              schema:
+                type:
+                  object
+                oneOf:
+                  - {}
+  /terminals/{terminalId}/shell:
+    post:
+      summary: Input key-in data to the shell of the terminal
+      operationId: postShell
+      tags:
+        - shell
+      parameters:
+        - name: terminalId
+          in: path
+          required: true
+          description: The ID number of the terminal to retrieve
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ShellPost'
+        required: true
+      responses:
+        '200':
+          description: Null response
+  /terminals/{terminalId}/logs:
+    get:
+      summary: Get all log data of specified terminal
+      operationId: getTerminalLogs
+      tags:
+        - logs
+      parameters:
+        - name: terminalId
+          in: path
+          required: true
+          description: The ID number of the terminal to retrieve
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Expected response to a valid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Logs"
+    post:
+      summary: Add a log data of specified terminal
+      operationId: postLogs
+      tags:
+        - logs
+      parameters:
+        - name: terminalId
+          in: path
+          required: true
+          description: The ID number of the terminal to retrieve
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LogPost'
+        required: true
+      responses:
+        '200':
+          description: Expected response to a valid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Logs"
+  /terminals/{terminalId}}/logs/{logIds}:
+    get:
+      summary: Get specified range log data of specified terminal 
+      operationId: getTerminalLogsRange
+      tags:
+        - logs
+      parameters:
+        - name: terminalId
+          in: path
+          required: true
+          description: The ID number of the terminal for logs
+          schema:
+            type: integer
+            format: int64
+        - name: logIds
+          in: path
+          required: true
+          description: The ID number range of the terminal to retrieve
+          schema:
+            type: string
+            format: begin-end
+          examples:
+            one:
+              value: 1
+            multi:
+              value: 2,4,8
+            offset:
+              value: 100-         
+            range:
+              value: 100-200
+            limit:
+              value: -200
+            mix:
+              value: 1,10-20,100-
+      responses:
+        '200':
+          description: Expected response to a valid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Logs"
+  /commands:
+    get:
+      summary: list commands
+      operationId: getCommands
+      tags:
+        - commands
+      responses:
+        '200':
+          description: Expected response to a valid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Commands"
+    post:
+      summary: Add a command
+      operationId: postCommand
+      tags:
+        - commands
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CommandPost'
+        required: true
+      responses:
+        '200':
+          description: Null response
+  /targets:
+    get:
+      summary: get targets
+      operationId: getTargets
+      tags:
+        - targets
+      responses:
+        '200':
+          description: Expected response to a valid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Targets"
+  /targets/{targetId}:
+    get:
+      summary: get a targets
+      operationId: getTarget
+      tags:
+        - targets
+      responses:
+        '200':
+          description: Expected response to a valid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Target"
+    post:
+      summary: add a target
+      operationId: postTarget
+      tags:
+        - targets
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TargetPost'
+        required: true
+      responses:
+        '200':
+          description: Null response
+          content:
+            application/json:
+              schema:
+                type:
+                  object
+                oneOf:
+                  - $ref: "#/components/schemas/Target"
+                  - {}
+    delete:
+      summary: Delete a target
+      operationId: deleteTarget
+      tags:
+        - targets
+      parameters:
+        - name: targetId
+          in: path
+          required: true
+          description: The ID number of the target to delete
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Null response
+          content:
+            application/json:
+              schema:
+                type:
+                  object
+                oneOf:
+                  - {}
+  /targets/{targetId}/children:
+    get:
+      summary: get children of a targets
+      operationId: getTargetChildren
+      tags:
+        - targets
+      responses:
+        '200':
+          description: Expected response to a valid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Targets"
+
+components:
+  schemas:
+    TerminalPost:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          description: terminal name
+          type: string
+    Terminal:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+    Terminals:
+      description: array of Terminals
+      type: array
+      items:
+        $ref: "#/components/schemas/Terminal"
+    ShellPost:
+      type: object 
+      required:
+        - command
+      properties:
+        command:
+          description: key in data
+          type: string
+        target:
+          description: target number to extract targets
+          type: integer
+          format: int64
+    Log:
+      type: object
+      required:
+        - logId
+        - terminalId
+        - command
+        - status
+        - output
+        - date
+      properties:
+        logId:
+          type: integer
+          format: int64
+        terminalId:
+          type: integer
+          format: int64
+        command:
+          type: string
+        status:
+          type: integer
+          format: int64
+        output:
+          type: string
+        date:
+          type: string
+    LogPost:
+      type: object 
+      required:
+        - log
+      properties:
+        command:
+          description: command of the log
+          type: string
+        status:
+          description: command status
+          type: integer
+          format: int64
+        output:
+          description: logging data
+          type: string
+    Logs:
+      type: array
+      items:
+        $ref: "#/components/schemas/Log"
+    OutputTargets:
+      type: object 
+      required:
+        - targets
+      properties:
+        targets:
+          description: TODO
+          type: array 
+          items:
+            type: object
+            required:
+              - name
+              - pattern
+            properties:
+              name:
+                description: target name
+                type: string 
+              pattern:
+                description: regex pattern to extract a target value
+                type: string 
+    OutputScript:
+      type: object 
+      required:
+        - script
+      properties:
+        script:
+          description: script to extract targets from command output
+          type: string 
+    Output:
+      oneOf:
+        - $ref: "#/components/schemas/OutputTargets"
+        - $ref: "#/components/schemas/OutputScript"
+    CommandPost:
+      type: object 
+      required:
+        - name
+        - target
+        - pattern
+        - output
+      properties:
+        name:
+          description: command name
+          type: string
+        template:
+          description: command and arguments template
+          type: string
+        pattern:
+          description: regular expression to identify whether a command was entered
+          type: string
+        output:
+          $ref: "#/components/schemas/Output"
+    CommandPattern:
+      type: object
+      required:
+        - id
+        - name
+        - template
+        - pattern
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          description: command name
+          type: string
+        template:
+          description: command and arguments template
+          type: string
+        pattern:
+          description: regular expression to identify whether a command was entered
+          type: string
+        output:
+          $ref: "#/components/schemas/OutputTargets"
+    CommandScript:
+      type: object
+      required:
+        - id
+        - name
+        - template
+        - pattern
+        - output
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          description: command name
+          type: string
+        template:
+          description: command and arguments template
+          type: string
+        pattern:
+          description: regular expression to identify whether a command was entered
+          type: string
+        output:
+          $ref: "#/components/schemas/OutputScript"
+    Command:
+      oneOf:
+        - $ref: "#/components/schemas/CommandPattern"
+        - $ref: "#/components/schemas/CommandScript"
+    Commands:
+      type: array
+      items:
+        $ref: "#/components/schemas/Command"
+    TargetPost:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          description: target name or value
+          type: string
+    Target:
+      type: object
+      required:
+        - id
+        - value
+        - parnet
+        - children
+      properties:
+        id:
+          type: integer
+          format: int64
+        value:
+          description: target value
+          type: string
+        parent:
+          description: parent target id
+          type: integer
+          format: int64
+        children:
+          description: child target ids
+          type: array
+          items:
+            type: integer
+            format: int64
+    Targets:
+      type: array
+      items:
+        $ref: "#/components/schemas/Target"
+    Error:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: integer
+          format: int32
+        message:
+          type: string

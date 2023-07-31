@@ -1,0 +1,6 @@
+{
+  "host": "localhost",
+  "port": 8888,
+  "websocket": 8889,
+  "target": 0
+}

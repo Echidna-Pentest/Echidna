@@ -1,0 +1,61 @@
+{
+  "name": "echidna-web",
+  "version": "0.9.0",
+  "private": true,
+  "scripts": {
+    "serve": "vue-cli-service serve",
+    "build": "vue-cli-service build",
+    "lint": "vue-cli-service lint"
+  },
+  "dependencies": {
+    "@babel/runtime": "^7.19.0",
+    "@echidna/api": "file:../../lib",
+    "core-js": "^3.25.1",
+    "vis-data": "^7.1.6",
+    "vis-network": "^9.1.6",
+    "vis-util": "^5.0.3",
+    "vue": "^2.6.14",
+    "vue-router": "^3.6.5",
+    "vuejs-dialog": "^1.4.2",
+    "vuetify": "^2.6.10",
+    "vuex": "^3.6.2",
+    "xterm": "^4.19.0",
+    "autoprefixer": "^10.4.14",
+    "postcss": "^8.4.27",
+    "xterm-addon-fit": "^0.5.0"
+  },
+  "devDependencies": {
+    "@babel/plugin-transform-runtime": "^7.19.0",
+    "@vue/cli-plugin-babel": "~5.0.8",
+    "@vue/cli-plugin-eslint": "~5.0.8",
+    "@vue/cli-service": "~5.0.8",
+    "babel-eslint": "^10.1.0",
+    "eslint": "^7.32.0",
+    "eslint-plugin-vue": "^7.20.0",
+    "regenerator-runtime": "^0.13.9",
+    "sass": "~1.32.0",
+    "sass-loader": "^10.0.0",
+    "vue-cli-plugin-vuetify": "~2.4.3",
+    "vue-template-compiler": "^2.7.10",
+    "vuetify-loader": "^1.9.2"
+  },
+  "eslintConfig": {
+    "root": true,
+    "env": {
+      "node": true
+    },
+    "extends": [
+      "plugin:vue/essential",
+      "eslint:recommended"
+    ],
+    "parserOptions": {
+      "parser": "babel-eslint"
+    },
+    "rules": {}
+  },
+  "browserslist": [
+    "> 1%",
+    "last 2 versions",
+    "not dead"
+  ]
+}

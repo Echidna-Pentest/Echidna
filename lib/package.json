@@ -1,0 +1,27 @@
+{
+  "name": "@echidna/api",
+  "version": "0.5.0",
+  "description": "Echidna Web API Library",
+  "main": "echidnaapi.js",
+  "private": true,
+  "scripts": {
+    "lint": "eslint --fix '*.js'",
+    "test": "npx jest"
+  },
+  "author": "Kazuhisa SHIRAKAMI <k.shirakami@fujitsu.com>",
+  "license": "Apache License Version 2.0",
+  "devDependencies": {
+    "@babel/core": "^7.19.3",
+    "@babel/plugin-proposal-optional-chaining": "^7.18.9",
+    "@babel/preset-env": "^7.19.3",
+    "babel-jest": "^29.1.0",
+    "babel-plugin-rewire": "^1.2.0",
+    "eslint": "^8.2.0",
+    "eslint-plugin-vue": "^8.0.3",
+    "jest": "^29.1.1"
+  },
+  "dependencies": {
+    "axios": "^0.24.0",
+    "websocket": "^1.0.34"
+  }
+}

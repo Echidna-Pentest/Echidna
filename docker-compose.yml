@@ -1,0 +1,25 @@
+version: '2'
+services:
+  api:
+    build:
+      context: ./server/api_server
+      dockerfile: ./Dockerfile
+    ports:
+      - "8888:8888"
+      - "8889:8889"
+    volumes:
+      - type: bind
+        source: ./server/api_server/data
+        target: /opt/app/data
+    tty: true
+    stdin_open: true
+  web:
+    build:
+      context: .
+      dockerfile: ./server/web_server/Dockerfile
+    ports:
+      - "8080:8080"
+    links:
+      - "api:api"
+    tty: true
+    stdin_open: true

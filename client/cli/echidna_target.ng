@@ -1,0 +1,86 @@
+$ echidna targets
+2: /network/10.0.1.0/24
+4: /network/10.0.1.0/24/host/camus-ub22
+6: /network/10.0.1.0/24/host/camus-ub22/mac/00:50:56:a5:12:bb
+8: /network/10.0.1.0/24/host/camus-ub22/interface/ens160
+10: /network/10.0.1.0/24/host/camus-ub22/interface/ens160/mac/00:50:56:a5:12:bb
+12: /network/10.0.1.0/24/host/camus-ub22/ipv4/10.0.1.34
+14: /network/10.0.1.0/24/host/camus-ub22/ipv4/10.0.1.34/netmask/255.255.255.0
+16: /network/10.0.1.0/24/host/camus-ub22/interface/ens160/ipv4/10.0.1.34
+18: /network/10.0.1.0/24/host/camus-ub22/ipv6/fe80::2a9a:7888:fb90:1f7c
+20: /network/10.0.1.0/24/host/camus-ub22/ipv6/fe80::2a9a:7888:fb90:1f7c/netmask/ffff:ffff:ffff:ffff::
+22: /network/10.0.1.0/24/host/camus-ub22/interface/ens160/ipv6/fe80::2a9a:7888:fb90:1f7c
+23: /network/10.0.1.0/24/host/camus-ub22/mac/00:50:56:a5:12:a1
+24: /network/10.0.1.0/24/host/camus-ub22/interface/ens192
+26: /network/10.0.1.0/24/host/camus-ub22/interface/ens192/mac/00:50:56:a5:12:a1
+27: /network/10.112.0.0/24
+29: /network/10.0.1.0/24/host/camus-ub22/ipv4/10.112.0.194
+31: /network/10.0.1.0/24/host/camus-ub22/ipv4/10.112.0.194/netmask/255.255.255.0
+34: /network/10.0.1.0/24/host/camus-ub22/ipv6/fe80::72d8:2d8d:451a:9838
+36: /network/10.0.1.0/24/host/camus-ub22/ipv6/fe80::72d8:2d8d:451a:9838/netmask/ffff:ffff:ffff:ffff::
+38: /network/10.0.1.0/24/host/camus-ub22/interface/ens192/ipv6/fe80::72d8:2d8d:451a:9838
+39: /network/10.0.1.0/24/host/_gateway
+shira@camus-ub22:~/workspace/gitlab/aggressor/echidna/client/cli
+$ echidna target remove 31
+shira@camus-ub22:~/workspace/gitlab/aggressor/echidna/client/cli
+$ echidna target remove 31
+shira@camus-ub22:~/workspace/gitlab/aggressor/echidna/client/cli
+$ echidna target remove 31
+shira@camus-ub22:~/workspace/gitlab/aggressor/echidna/client/cli
+$ echidna target remove 31
+shira@camus-ub22:~/workspace/gitlab/aggressor/echidna/client/cli
+$ echidna target remove 31
+shira@camus-ub22:~/workspace/gitlab/aggressor/echidna/client/cli
+$ ^C
+shira@camus-ub22:~/workspace/gitlab/aggressor/echidna/client/cli
+$ echidna target remove 31
+shira@camus-ub22:~/workspace/gitlab/aggressor/echidna/client/cli
+$ echidna target remove 31
+shira@camus-ub22:~/workspace/gitlab/aggressor/echidna/client/cli
+$ ^C
+shira@camus-ub22:~/workspace/gitlab/aggressor/echidna/client/cli
+$ echidna target remove 31
+shira@camus-ub22:~/workspace/gitlab/aggressor/echidna/client/cli
+$ echidna target remove 31
+shira@camus-ub22:~/workspace/gitlab/aggressor/echidna/client/cli
+$ echidna targets
+2: /network/10.0.1.0/24
+4: /network/10.0.1.0/24/host/camus-ub22
+6: /network/10.0.1.0/24/host/camus-ub22/mac/00:50:56:a5:12:bb
+8: /network/10.0.1.0/24/host/camus-ub22/interface/ens160
+10: /network/10.0.1.0/24/host/camus-ub22/interface/ens160/mac/00:50:56:a5:12:bb
+12: /network/10.0.1.0/24/host/camus-ub22/ipv4/10.0.1.34
+14: /network/10.0.1.0/24/host/camus-ub22/ipv4/10.0.1.34/netmask/255.255.255.0
+16: /network/10.0.1.0/24/host/camus-ub22/interface/ens160/ipv4/10.0.1.34
+18: /network/10.0.1.0/24/host/camus-ub22/ipv6/fe80::2a9a:7888:fb90:1f7c
+20: /network/10.0.1.0/24/host/camus-ub22/ipv6/fe80::2a9a:7888:fb90:1f7c/netmask/ffff:ffff:ffff:ffff::
+22: /network/10.0.1.0/24/host/camus-ub22/interface/ens160/ipv6/fe80::2a9a:7888:fb90:1f7c
+23: /network/10.0.1.0/24/host/camus-ub22/mac/00:50:56:a5:12:a1
+24: /network/10.0.1.0/24/host/camus-ub22/interface/ens192
+26: /network/10.0.1.0/24/host/camus-ub22/interface/ens192/mac/00:50:56:a5:12:a1
+27: /network/10.112.0.0/24
+29: /network/10.0.1.0/24/host/camus-ub22/ipv4/10.112.0.194
+shira@camus-ub22:~/workspace/gitlab/aggressor/echidna/client/cli
+$ echidna target remove 31 0
+shira@camus-ub22:~/workspace/gitlab/aggressor/echidna/client/cli
+$ echidna target remove 10 0
+shira@camus-ub22:~/workspace/gitlab/aggressor/echidna/client/cli
+$ echidna target remove 31
+shira@camus-ub22:~/workspace/gitlab/aggressor/echidna/client/cli
+$ echidna targets
+2: /network/10.0.1.0/24
+4: /network/10.0.1.0/24/host/camus-ub22
+6: /network/10.0.1.0/24/host/camus-ub22/mac/00:50:56:a5:12:bb
+8: /network/10.0.1.0/24/host/camus-ub22/interface/ens160
+12: /network/10.0.1.0/24/host/camus-ub22/ipv4/10.0.1.34
+14: /network/10.0.1.0/24/host/camus-ub22/ipv4/10.0.1.34/netmask/255.255.255.0
+16: /network/10.0.1.0/24/host/camus-ub22/interface/ens160/ipv4/10.0.1.34
+18: /network/10.0.1.0/24/host/camus-ub22/ipv6/fe80::2a9a:7888:fb90:1f7c
+20: /network/10.0.1.0/24/host/camus-ub22/ipv6/fe80::2a9a:7888:fb90:1f7c/netmask/ffff:ffff:ffff:ffff::
+22: /network/10.0.1.0/24/host/camus-ub22/interface/ens160/ipv6/fe80::2a9a:7888:fb90:1f7c
+23: /network/10.0.1.0/24/host/camus-ub22/mac/00:50:56:a5:12:a1
+24: /network/10.0.1.0/24/host/camus-ub22/interface/ens192
+26: /network/10.0.1.0/24/host/camus-ub22/interface/ens192/mac/00:50:56:a5:12:a1
+27: /network/10.112.0.0/24
+29: /network/10.0.1.0/24/host/camus-ub22/ipv4/10.112.0.194
+

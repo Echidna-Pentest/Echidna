@@ -1,0 +1,390 @@
+<!-- COPYRIGHT FUJITSU SYSTEM INTEGRATION LABORATORIES LIMITED 2021 -->
+<template>
+
+<div
+  class="drop-zone"
+  @keydown.up="onUp"
+  @keydown.down="onDown"
+  @keydown.left="onLeft"
+  @keydown.right="onRight"
+  @keyup.up="dropEvent"
+  @keyup.down="dropEvent"
+  @keyup.left="dropEvent"
+  @keyup.right="dropEvent"
+>
+  <v-text-field
+  v-model="search"
+  placeholder="Seach Target Tree"
+  flat
+  hide-details
+  @input="searchTree"
+  rows="1"
+  dense
+  ></v-text-field>
+  <v-treeview
+    class="mr-auto"
+    :items="targets"
+    item-text="value"
+    activatable
+    :active="active"
+    return-object
+    dense
+    @update:active="selected"
+    :search="search"
+    :open.sync="open"
+    :filter="filter"
+  >
+    <template v-slot:label="{item}">
+      <div
+        class="container ma-0 pa-0"
+        draggable="true"
+        @dragstart="startDrag($event, item)"
+        @drop="onDrop($event, item)"
+        @dragover.prevent @dragenter.prevent
+      >
+        <label class="draggable ma-0 pa-0" :id="item.id">
+          <span
+            class="treenodetext "
+            @click="activate(item)"
+            style="cursor: text;"
+          >
+            {{item.name}}
+          </span>
+          <div class="plus">
+            <v-btn
+              color="primary"
+              class="ma-0 pa-0"
+              dark
+              x-small
+              plain
+            >
+              <span @click="showDialog(item)">+</span>
+            </v-btn>
+          </div>
+          <div class="minus">
+            <v-btn
+              color="primary"
+              class="ma-0 pa-0"
+              dark
+              x-small
+              depressed
+              plain
+            >
+              <span @click="deleteTarget(item)">-</span>
+            </v-btn>
+          </div>
+        </label>
+      </div>
+    </template>
+  </v-treeview>
+
+  <v-dialog v-model="dialog" max-width="600px">
+    <v-card>
+      <v-card-title cleass="primary white--text" primary-title>
+        Add Target Node
+      </v-card-title>
+      <v-card-text class="pa-4">
+        <v-container fluid>
+          <v-textarea
+            counter
+            label="Please input the target name. You can add multiple targets by inputing multiple lines."
+            id="addnodetext"
+          ></v-textarea>
+        </v-container>
+      </v-card-text>
+      <v-card-actions>
+        <v-spacer></v-spacer>
+          <v-btn
+            color="blue darken-1"
+            text
+            @click="dialog = false"
+          >
+            Close
+          </v-btn>
+          <v-btn
+            color="blue darken-1"
+            text
+            @click="addTarget"
+          >
+            Save
+          </v-btn>
+      </v-card-actions>
+    </v-card>
+  </v-dialog>
+</div>
+
+</template>
+
+<style scoped>
+
+.container{
+  margin:0.1px;
+}
+.plus{
+  width: 20px;
+  height: 15px;
+  line-height: 0.1;
+}
+.minus{
+  width: 20px;
+  height: 15px;
+}
+
+.draggable {
+  display: flex;
+}
+
+.draggable.dragging {
+  opacity: .5;
+}
+
+</style>
+
+<script>
+import { EchidnaAPI } from '@echidna/api';
+const echidna = new EchidnaAPI(location.hostname);
+var targetsData = [{ id: 0, name: 'targets', parent: null, children: [] }];
+var clickeditem = "";
+export default {
+  data: () => ({
+    targets: targetsData,
+    active: [],
+    open: [],
+    search: null,
+    commands: [],
+    command: '',
+    dialog: false,
+    offset: true,
+  }),
+  mounted() {
+    this.updateTargets();
+    echidna.on('targets', this.updateTargets);
+  },
+  computed: {
+    filter() {
+      return (item, search, textKey) => item[textKey].includes(search);
+    },
+  },
+  methods: {
+    updateTargets() {
+      echidna
+      .targets()
+      .then(({ data: targets }) => {
+        this.targets.splice(0, 1, this.convertTargets(targets));
+      })
+      .catch((error) => {
+        console.error(error);
+      });
+    },
+    convertTargets(targets) {
+      if (!targets?.length) return {};
+      return this.convertTarget(targets[0], null, targets);
+    },
+    convertTarget(target, parent, targets) {
+      const node = {
+        id: target.id,
+        parent,
+        name: target.value,
+        value: target.value,
+      };
+      node.children = target.children.map((child) => this.convertTarget(targets[child], node, targets));
+      return node;
+    },
+    selected(targets) {
+      this.$emit('selected', targets);
+    },
+    getTargetElements(target) {
+      let elements = {};
+      while (target?.id) {
+        const parent = target.parent;
+        if (!(parent?.value in elements)) {
+          elements[parent.value] = target.value;
+        }
+        target = parent?.parent;
+      }
+      return elements;
+    },
+    showDialog(item){
+      clickeditem = item;
+      this.dialog = true;
+    },
+    activate(item){
+      this.active.splice(0, this.active.length);
+      this.active.splice(0, 0, item);
+    },
+    addTarget(){
+      this.dialog = false;
+      const values = document.getElementById("addnodetext").value.split(/\n/);
+      for (var i = 0; i < values.length; i++){
+        echidna
+        .addTarget(clickeditem.id, values[i])
+        .then(({ data: target }) => {
+          console.debug("target: add", target);
+        })
+        .catch((error) => {
+          console.error(error);
+        });
+      }
+    },
+    deleteTarget(item){
+      if (item.id == 0){
+        console.info("can't remove root node");
+      }else{
+        this.$dialog
+        .confirm({
+          title: 'Delete Confirm',
+          body: 'Do you want to delete the item "'+ item.name + '"? Child nodes are also removed. '
+        },{
+          okText: 'OK',
+          cancelText: 'Cancel',
+        })
+        .then(function() {
+          echidna
+          .deleteTarget(item.id, item.parent.id)
+          .then(() => {
+            console.debug("target: delete", item.id);
+          })
+          .catch((error) => {
+            console.error(error);
+          });
+        })
+        .catch(function() {
+          console.info('Delete a target was canceled.');
+        });
+      }
+    },
+    _isOpen(target) {
+      return this.open.some(opened => opened.id == target.id);
+    },
+    _bottom(target) {
+      if (target?.children.length && this._isOpen(target)) {
+        return this._bottom(target.children[target.children.length - 1]);
+      }
+      return target;
+    },
+    _next(target) {
+      const parent = target?.parent;
+      if (!parent) return null;
+      const brothers = parent?.children;
+      const targetIndex = brothers?.findIndex(brother => brother === target);
+      if (targetIndex < brothers.length - 1) {
+        return brothers[targetIndex + 1];
+      }
+      return this._next(parent);
+    },
+    _up(target) {
+      const parent = target?.parent;
+      if (!parent) return null;
+      const brothers = parent.children;
+      const targetIndex = brothers.findIndex(brother => brother === target);
+      if (targetIndex === 0) {
+        return parent;
+      }
+      return this._bottom(brothers[targetIndex - 1]);
+    },
+    _down(target) {
+      if (target?.children.length && this._isOpen(target)) {
+        return target.children[0];
+      }
+      return this._next(target);
+    },
+    dropEvent(evt) {
+      evt.preventDefault();
+      evt.stopPropagation();
+    },
+    onUp(evt) {
+      if (!this.active.length) {
+        this.active.push(this.targets[0]);
+      }
+      const target = this._up(this.active[0]);
+      if (target) {
+        this.active.splice(0, 1, target);
+      }
+      this.dropEvent(evt);
+    },
+    onDown(evt) {
+      if (!this.active.length) {
+        this.active.push(this.targets[0]);
+      }
+      const target = this._down(this.active[0]);
+      if (target) {
+        this.active.splice(0, 1, target);
+      }
+      this.dropEvent(evt);
+    },
+    onLeft(evt) {
+      if (!this.active.length) {
+        this.active.push(this.targets[0]);
+      }
+      const target = this.active[0];
+      const index = this.open.findIndex(opened => opened == target);
+      if (index >= 0) {
+        this.open.splice(index, 1);
+      } else {
+        const nextTarget = this._up(target);
+        if (nextTarget) {
+            this.active.splice(0, 1, nextTarget);
+        }
+      }
+      this.dropEvent(evt);
+    },
+    onRight(evt) {
+      const target = this.active[0];
+      if (target && !this._isOpen(target)) {
+        this.open.push(target);
+      } else {
+        const nextTarget = this._down(target);
+        if (nextTarget) {
+            this.active.splice(0, 1, nextTarget);
+        }
+      }
+      this.dropEvent(evt);
+    },
+    startDrag(evt, target) {
+      console.debug("drag: target", target.id, target.name);
+      evt.dataTransfer.dropEffect = 'move';
+      evt.dataTransfer.effectAllowed = 'move';
+      evt.dataTransfer.setData('targetId', target.id);
+      evt.dataTransfer.setData('parentId', target.parent.id);
+    },
+    onDrop(evt, newParent) {
+      if (newParent) {
+        const targetId = Number(evt.dataTransfer.getData('targetId'));
+        const parentId = Number(evt.dataTransfer.getData('parentId'));
+        console.debug(`drop: move ${targetId} from ${parentId} to ${newParent.id}`);
+        echidna
+        .moveTarget(targetId, parentId, newParent.id)
+        .then(({ data: target }) => {
+          console.debug("drop: moved", target);
+        })
+        .catch((error) => {
+          console.error(error);
+        });
+      }
+      evt.preventDefault();
+      evt.stopPropagation();
+    },
+    searchTree(searchstring){
+      let stack = [], node;
+      let searchResult = [];
+      stack.push(this.targets[0]);
+      while (stack.length > 0) {
+          node = stack.pop();
+          if (node.name.includes(searchstring)) {
+            let parentNode = node;
+            while (parentNode.id != 0){
+              parentNode = parentNode.parent;
+              if (!searchResult.some(el => el.id === parentNode.id)) searchResult.push(parentNode);
+            }
+//            result.push(node);
+          } else if (node.children && node.children.length) {
+              for (let i = 0; i < node.children.length; i += 1) {
+                  stack.push(node.children[i]);
+              }
+          }
+      }
+      this.open = searchResult;
+    },
+  },
+};
+</script>
