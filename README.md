@@ -85,13 +85,24 @@ kalilinux/kali-rolling   latest    5eb4e474175c   3 weeks ago      121MB
 node                     16-slim   572389d8c38d   4 weeks ago      179MB
 ```
 
-### Web access
+### How to use Echidna
 
 You can use Echidna with a web browser.
 
 ```text
 http://localhost:8080/
 ```
+
+Once you have successfully accessed Echidna from the web, use one of the commands below to add the target IP address and port number to the target tree.
+
+- ping target_ip
+- nmap target_ip
+- ip -4 neigh (if the target ip address is already added to ARP table)
+
+Once the target information has been added to the tree, select that target from the target tree. 
+Depending on which ports are open, the commands to be executed next will be displayed in the Candidate Command component, so click on them.
+The command displayed in the Candidatre Command component changes depending on the target selection, such as selecting the IP address of the host, selecting port 21, selecting port 80, etc, so please select various target nodes at first.
+
 
 <!--
 ### CLI command access

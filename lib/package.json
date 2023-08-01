@@ -8,7 +8,6 @@
     "lint": "eslint --fix '*.js'",
     "test": "npx jest"
   },
-  "author": "Kazuhisa SHIRAKAMI <k.shirakami@fujitsu.com>",
   "license": "Apache License Version 2.0",
   "devDependencies": {
     "@babel/core": "^7.19.3",
