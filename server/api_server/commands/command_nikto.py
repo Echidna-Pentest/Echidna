@@ -11,6 +11,9 @@ read nikto output and output target TSV(Tab Separated Value)
 # template: nikto -h http://{host}/
 # template: nikto -h http://{ipv4}/
 # template: nikto -h http://{ipv6}/
+# template: nikto -h http://{host}:{port}/
+# template: nikto -h http://{ipv4}:{port}/
+# template: nikto -h http://{ipv6}:{port}/
 # template: nikto -h {url}
 # condition: {".*": ["80", "443", "http", "https"]}
 # group: HTTP

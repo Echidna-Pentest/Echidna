@@ -74,8 +74,8 @@
     },
     {
       "machine_name": "Jerry",
-      "scan_tool": "nmap",
-      "CriticalScan": "Apache Tomcat/Coyote"
+      "scan_tool": "nikto",
+      "CriticalScan": "s3cret"
     },
     {
       "machine_name": "Jeeves",

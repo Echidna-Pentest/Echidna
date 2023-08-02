@@ -7,6 +7,10 @@ Echidna visualizes and shares the attack of each penetration tester, and recomme
 
 ![](Echidna-Short.gif)
 
+Please see the youtube video below to see the features of Echidna.
+https://www.youtube.com/@Echidna0801
+
+
 ## Components
 
 There are two Echidna servers and an Echidna command.
@@ -102,6 +106,10 @@ Once you have successfully accessed Echidna from the web, use one of the command
 Once the target information has been added to the tree, select that target from the target tree. 
 Depending on which ports are open, the commands to be executed next will be displayed in the Candidate Command component, so click on them.
 The command displayed in the Candidatre Command component changes depending on the target selection, such as selecting the IP address of the host, selecting port 21, selecting port 80, etc, so please select various target nodes at first.
+
+
+Please see the youtube video below to see how to exploit vulnerable machines (Blue, Jerry, Stapler) with Echidna.
+https://www.youtube.com/@Echidna0801
 
 
 <!--
