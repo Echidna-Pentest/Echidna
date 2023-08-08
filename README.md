@@ -11,6 +11,10 @@ Please see the youtube video below to see the features of Echidna.
 https://www.youtube.com/@Echidna0801
 
 
+## Echidna Repository
+
+https://github.com/Echidna-Pentest/Echidna/
+
 ## Components
 
 There are two Echidna servers and an Echidna command.
@@ -31,7 +35,7 @@ Execute "sudo install.sh", or execute the commands below to install manually.
 
 ### Install Node.js
 
-```
+```console
 $ sudo apt-get -y update
 $ sudo apt-get -y dist-upgrade
 $ sudo apt-get -y install kali-linux-headless nodejs npm
