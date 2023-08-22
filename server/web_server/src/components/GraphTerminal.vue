@@ -42,12 +42,13 @@ export default {
     return this.terminalName;
   },
   mounted() {
-    console.log("Terminal mount");
+    console.log("GraphTerminal mount");
     this.terminal = new Terminal();
     this.terminal.loadAddon(fitAddon);
     this.terminal.open(document.getElementById('terminal'));
     fitAddon.fit();
     this.terminal.onKey((event) => {
+      console.log("event=", event, " this.terminalId=", this.terminalId);
       if (event.domEvent.code == 'KeyV' && event.domEvent.ctrlKey) {  //Paste Event
         navigator.clipboard.readText()
           .then(text => {

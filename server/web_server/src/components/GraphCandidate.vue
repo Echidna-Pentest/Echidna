@@ -68,25 +68,20 @@ export default {
   },
   methods: {
     updateCandidates(targets) {
-      console.log("targets=", targets);
-      if (this.isLocalIPLoaded == false){
+/*      if (this.isLocalIPLoaded == false){
         this.isLocalIPLoaded = echidna.loadLocalIPs();  // local LocalIP and Network range to replace {localip} of the command template with actual local ips
-      }
-      const terminalId = document.getElementsByClassName("v-tab--active")[0].id.replace('terminal', '');
-      echidna.candidates(targets.map(target => target.id), terminalId).then((commands) =>
-        this.$set(this, 'commands', commands.sort(this.compare))
-      );
-    },
-    updateCandidatesFromGraph(targets) {
+      }*/
       console.log("targets=", targets);
+//      const terminalId = document.getElementsByClassName("v-tab--active")[0].id.replace('terminal', '');
       echidna.candidates(targets.map(target => target.id), 1).then((commands) => {
         console.log("commands=", commands);
         this.$set(this, 'commands', commands.sort(this.compare));
-        }
+      }
       );
     },
     selected(event) {
-      this.command = event.target.innerText;
+      console.log("GraphCadidate selected:", event);
+/*      this.command = event.target.innerText;
       const regexp = /ipad|android/;
       if (regexp.test(navigator.userAgent.toLowerCase())){
         this.command = this.command + "\n";
@@ -97,7 +92,7 @@ export default {
       } else {
         document.addEventListener('copy', this.copyListener);
         document.execCommand('copy');
-      }
+      }*/
     },
     copyListener(event) {
       event.clipboardData.setData('text/plain', this.command);

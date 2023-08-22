@@ -242,6 +242,7 @@ export default {
       return node;
     },
     selected(targets) {
+      console.log("target.vue Selected targets=", targets);
       this.$emit('selected', targets);
     },
     getTargetElements(target) {
