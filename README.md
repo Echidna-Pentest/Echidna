@@ -236,6 +236,9 @@ You can view the target tree graphically by clicking the Graph button in the nav
 
 <img src="img/graph.png" width="50%">
 
+You can also execute commands by clicking the candidate command.
+![](graphTerm.gif)
+
 
 ### Target Tree Analysis (Under Development)
 Analyze Target Tree and highlight them if some critical vulnerabilities are found and display the Machine having the same vulnerability in the Hack The Box.
