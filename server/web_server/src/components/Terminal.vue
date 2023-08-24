@@ -116,7 +116,7 @@ export default {
           console.log(error);
         });
         if (appendNewline == true){
-          await sleep(3);
+          await sleep(300);
           echidna
           .keyin(this.terminalId, "\n", this.targetId)
           .catch((error) => {

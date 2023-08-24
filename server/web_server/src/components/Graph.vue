@@ -41,7 +41,7 @@
             v-show="commandDialog"
             v-resize="onResize"
             class="ma-0 pa-0 overflow-y-auto"
-            style="max-height: 42vh; max-width: 50vw"
+            style="max-height: 31vh; max-width: 50vw"
           >
             <v-card
               ref="candidateCard"
@@ -60,7 +60,7 @@
             id="terminalDialog"
             v-show="terminalDialog"
             class="ma-0 pa-0"
-            style="max-height: 44vh; max-width: 50vw"
+            style="max-height: 40vh; max-width: 50vw"
           >
             <Terminal ref="terminal" @selected="selectCommand"></Terminal>
           </v-col>
