@@ -68,6 +68,7 @@ export default {
   },
   methods: {
     updateCandidates(targets) {
+      console.log("targets=", targets);
       if (this.isLocalIPLoaded == false){
         this.isLocalIPLoaded = echidna.loadLocalIPs();  // local LocalIP and Network range to replace {localip} of the command template with actual local ips
       }
@@ -76,13 +77,23 @@ export default {
         this.$set(this, 'commands', commands.sort(this.compare))
       );
     },
+    updateCandidatesFromGraph(targets) {
+      console.log("targets=", targets);
+      echidna.candidates(targets.map(target => target.id), 1).then((commands) => {
+        console.log("commands=", commands);
+        this.$set(this, 'commands', commands.sort(this.compare));
+        }
+      );
+    },
     selected(event) {
       this.command = event.target.innerText;
       const regexp = /ipad|android/;
+      let appendNewline = false;
       if (regexp.test(navigator.userAgent.toLowerCase())){
-        this.command = this.command + "\n";
+//        this.command = this.command + "\n";
+        appendNewline = true;
       }
-      this.$emit('selected', this.command);
+      this.$emit('selected', this.command, appendNewline);
       if (navigator.clipboard) {
         navigator.clipboard.writeText(event.target.innerText);
       } else {

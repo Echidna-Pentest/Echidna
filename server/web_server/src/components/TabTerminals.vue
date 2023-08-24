@@ -22,8 +22,8 @@ export default {
       this.$emit('selected', terminal);
       this.$refs.terminal.selectTerminal(terminal.id);
     },
-    executeCommand(command) {
-      this.$refs.terminal.executeCommand(command);
+    executeCommand(command, appendNewline=false) {
+      this.$refs.terminal.executeCommand(command, appendNewline);
     },
   },
 };

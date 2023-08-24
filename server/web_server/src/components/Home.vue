@@ -102,8 +102,8 @@ export default {
       this.$refs.commands.updateCandidates(targets);
       this.candidate = targets.length > 0;
     },
-    selectCommand(command) {
-      this.$refs.terminals.executeCommand(command);
+    selectCommand(command, appendNewline=false) {
+      this.$refs.terminals.executeCommand(command, appendNewline);
     },
 
     onResize(){

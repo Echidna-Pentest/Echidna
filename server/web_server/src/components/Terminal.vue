@@ -1,4 +1,7 @@
 <template>
+  <div 
+    @paste="handlePaste"
+    >
   <v-card  class="mr-auto" outlined>
     <div id="terminal" style="height: 900px"></div>
     <v-row v-show="false">
@@ -13,6 +16,7 @@
       </v-col>
     </v-row>
   </v-card>
+  </div>
 </template>
 
 <script>
@@ -38,6 +42,7 @@ export default {
     return this.terminalName;
   },
   mounted() {
+    console.log("Terminal mount");
     this.terminal = new Terminal();
     this.terminal.loadAddon(fitAddon);
     this.terminal.open(document.getElementById('terminal'));
@@ -55,6 +60,7 @@ export default {
           })
         return false;
       }
+      console.log("this.terminalId=", this.terminalId, " this.targetId=", this.targetId);
       echidna
         .keyin(this.terminalId, event.key, this.targetId)
         .catch((error) => {
@@ -76,6 +82,14 @@ export default {
       div.style.height = remainingHeight + "px";
       fitAddon.fit();
     }, 
+    handlePaste(event) {
+      console.log("handlePaste");
+      const text = event.clipboardData.getData('Text');    
+      echidna.keyin(this.terminalId, text, this.targetId)
+        .catch((error) => {
+          console.log(error);
+        });
+    },
     selectTerminal(terminalId) {
       this.adjustDivHeight();
       this.terminal.reset();
@@ -95,12 +109,20 @@ export default {
     updateTargetId(targets) {
       this.targetId = (targets.length) ? targets[targets.length - 1].id : 0;
     },
-    executeCommand(command) {
+    async executeCommand(command, appendNewline=false) {
       echidna
         .keyin(this.terminalId, command, this.targetId)
         .catch((error) => {
           console.log(error);
         });
+        if (appendNewline == true){
+          await sleep(300);
+          echidna
+          .keyin(this.terminalId, "\n", this.targetId)
+          .catch((error) => {
+            console.log(error);
+          });
+        }
     },
     terminalsEventListener() {
       this.updateTerminal();
@@ -158,4 +180,8 @@ export default {
     },
   },
 };
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 </script>
