@@ -1,13 +1,13 @@
 <template>
   <div>
     <div ref="networkContainer" style="width: 95vw; height: 95vh"></div>
-    <v-dialog v-model="dialog" :style="{ maxWidth: '95vw', height: '95vh' }">
+    <v-dialog v-model="dialog" :style="{ maxWidth: '95vw', height: '100vh' }">
       <v-row no-gutters>
         <v-col
           id="targetDialog"
           cols="6"
           class="ma-0 pa-0 overflow-y-auto"
-          style="max-height: 90vh"
+          style="max-height: 100vh"
         >
           <v-card>
             <v-card-title>Child Nodes</v-card-title>
@@ -41,7 +41,7 @@
             v-show="commandDialog"
             v-resize="onResize"
             class="ma-0 pa-0 overflow-y-auto"
-            style="max-height: 45vh, maxWidth: 45vw;"
+            style="max-height: 42vh; max-width: 50vw"
           >
             <v-card
               ref="candidateCard"
@@ -59,13 +59,10 @@
           <v-col
             id="terminalDialog"
             v-show="terminalDialog"
-            class="ma-0 pa-0 overflow-y-auto"
-            style="max-height: 45vh, maxWidth: 45vw;"
-          >         
-              <GraphTerminal
-                ref="graphterminal"
-                @selected="selectCommand"
-              ></GraphTerminal>
+            class="ma-0 pa-0"
+            style="max-height: 44vh; max-width: 50vw"
+          >
+            <Terminal ref="terminal" @selected="selectCommand"></Terminal>
           </v-col>
         </v-col>
       </v-row>
@@ -73,7 +70,11 @@
   </div>
 </template>
 
-<style scoped>
+<style>
+.v-dialog {
+  overflow-y: hidden;
+}
+
 .custom-dialog .v-dialog__content {
   width: 50% !important;
   max-width: 50% !important;
@@ -92,7 +93,9 @@ import {
 } from "vis-network/standalone/esm/vis-network.min.js";
 //import GraphCandidate from '@/components/GraphCandidate.vue';
 import Candidates from "@/components/Candidates.vue";
-import GraphTerminal from '@/components/GraphTerminal.vue';
+//import GraphTerminal from '@/components/GraphTerminal.vue';
+import Terminal from '@/components/Terminal.vue';
+
 
 const echidna = new EchidnaAPI(location.hostname);
 var targetsData = [{ id: 0, name: "targets", parent: null, children: [] }];
@@ -105,8 +108,10 @@ export default {
       targets: targetsData,
       candidate: false,
       selectedChildren: [],
+      terminalId: 0,
       active: [],
       open: [],
+      clickedId: 0,
       dialog: false,
       commandDialog: false,
       terminalDialog: false,
@@ -115,27 +120,30 @@ export default {
   components: {
     //    GraphCandidate
     Candidates,
-    GraphTerminal,
+    Terminal,
   },
   mounted() {
     this.updateTargets();
-    echidna.on("targets", this.updateTargets);
-    //    this.handleItemSelected(1);
+//    echidna.on("targets", this.showDialog(this.targets));
+    echidna.on("targets", () => {
+      echidna.getAllChildren(this.clickedId).then(({ data: childtarget }) => {
+      // get all children of the clicked node and draw by v-treeview
+        this.targets.splice(0, 1, this.convertTargets(childtarget));
+        this.showDialog(this.targets);
+      });
+    });
+    this.handleItemSelected(1);
   },
   methods: {
     showDialog(children) {
       this.selectedChildren = children;
       this.dialog = true;
     },
-    handleItemClick(item) {
-      console.log("clicked item:", item);
-    },
     handleItemSelected(selectedItemIds) {
-      console.log("Selected item IDs:", selectedItemIds);
       const selectedItems = this.selectedChildren.filter((child) =>
         selectedItemIds.includes(child.id),
       );
-      console.log("Selected items:", selectedItems);
+      console.debug("Selected items:", selectedItems);
     },
     updateTargets() {
       echidna
@@ -150,37 +158,46 @@ export default {
     },
     selected(targets) {
       this.commandDialog = true;
-      console.log("targets=", targets);
-      //      console.log("this.$refs.graphcandidate=", this.$refs.graphcandidate);
-      //      this.$refs.graphcandidate.updateCandidates(targets);
-      //      this.$refs.graphcandidate.selected(targets);
       this.$refs.graphcandidate.updateCandidatesFromGraph(targets);
-      console.log("this.$refs.graphcandidate=", this.$refs.candidateCard);
       this.candidate = targets.length > 0;
-      console.log("commandDialog=", this.commandDialog);
-      console.log("this.candidate=", this.candidate);
-    },
-    selectCommand(command) {
-      console.log("command=", command);
-      this.terminalDialog = true;
-      //this.$refs.graphterminal.addTerminal();
-      echidna.addTerminal("graph")
-        .then(({ data: id }) => {
-          console.log("terminal id is", id.id);
-          this.$refs.graphterminal.selectTerminal(id.id);
-          this.name = '';
-          this.$refs.graphterminal.executeCommand(command+ "\n");
-/*          echidna
-          .keyin(id.id, command + "\n", this.targetId)
-          .catch((error) => {
-            console.log(error);
-          });*/
+      echidna
+        .terminals()
+        .then(({ data: terminals }) => {
+//          console.log("terminals=", terminals);
+          const graphItem = terminals.find(item => item.name == "graphterm");
+          if (graphItem) {
+              this.terminalId = graphItem.id;
+          } else {
+              console.debug("Name 'graphterm' not found.");
+          }
         })
         .catch((error) => {
-          console.log(error);
-          this.name = '';
+          console.log(`ERROR: update terminal tabs : ${error}`);
         });
-
+    },
+    selectCommand(command) {
+      this.terminalDialog = true;
+      //this.$refs.terminal.addTerminal();
+      if (this.terminalId == 0){
+        this.terminalDialog = true;
+        echidna.addTerminal("graphterm")
+          .then(({ data: id }) => {
+            this.terminalId = id.id;
+            console.log("this.terminalId=", this.terminalId);
+            this.$refs.terminal.selectTerminal(this.terminalId);
+            this.name = 'graph';
+            this.$refs.terminal.executeCommand(command, true);
+        })
+          .catch((error) => {
+            console.log(error);
+            this.name = '';
+          });
+        }else{
+          console.log("this.terminalId=", this.terminalId);
+          this.$refs.terminal.selectTerminal(this.terminalId);
+          this.name = 'graph';
+          this.$refs.terminal.executeCommand(command, true);
+        }
     },
     drawTargets(targets) {
       const rootIds = targets
@@ -260,8 +277,8 @@ export default {
           // return if the empty space is clicked
           return;
         }
-        const nodeId = properties.nodes[0];
-        echidna.getAllChildren(nodeId).then(({ data: childtarget }) => {
+        this.clickedId = properties.nodes[0];
+        echidna.getAllChildren(this.clickedId).then(({ data: childtarget }) => {
           // get all children of the clicked node and draw by v-treeview
           this.targets.splice(0, 1, this.convertTargets(childtarget));
           this.showDialog(this.targets);

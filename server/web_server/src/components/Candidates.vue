@@ -88,10 +88,12 @@ export default {
     selected(event) {
       this.command = event.target.innerText;
       const regexp = /ipad|android/;
+      let appendNewline = false;
       if (regexp.test(navigator.userAgent.toLowerCase())){
-        this.command = this.command + "\n";
+//        this.command = this.command + "\n";
+        appendNewline = true;
       }
-      this.$emit('selected', this.command);
+      this.$emit('selected', this.command, appendNewline);
       if (navigator.clipboard) {
         navigator.clipboard.writeText(event.target.innerText);
       } else {
