@@ -274,7 +274,7 @@ export default {
       .exportTarget()
         .then(({ data: target }) => {
           if (target == "done"){
-            window.location.href = 'http://localhost:8080/targets/export/download';
+            window.location.href = '/targets/export/download';
           }
         })
         .catch((error) => {
