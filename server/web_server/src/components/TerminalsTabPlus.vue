@@ -104,8 +104,12 @@ export default {
         });
     },
     selected(terminal) {
-      this.tab = this.terminals.findIndex(({id}) => id === terminal.id);
-      this.$emit('selected', terminal);
+      if(terminal == null){
+        this.$emit('selected', this.terminals[this.tab]);
+      } else{
+        this.tab = this.terminals.findIndex(({id}) => id === terminal.id);
+        this.$emit('selected', terminal);
+      }
     },
     addTerminal() {
       echidna.addTerminal()

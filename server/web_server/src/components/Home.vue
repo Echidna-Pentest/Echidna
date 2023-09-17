@@ -56,6 +56,7 @@ export default {
   name: 'Home',
    state: {
     isLogin: false,
+    isInitialLoad: true,
     userId: ''
   },
   actions: {
@@ -76,6 +77,9 @@ export default {
   mounted() {
     const terminalSize = this.adjustTerminalSize();
     this.adjustTargetTreeSize(terminalSize);
+    this.$nextTick(() => {
+      this.isInitialLoad = false;
+    });
   },
   methods: {
     adjustTerminalSize(){
@@ -107,8 +111,13 @@ export default {
     },
 
     onResize(){
-      const terminalSize = this.adjustTerminalSize();
-      this.adjustTargetTreeSize(terminalSize);
+      setTimeout(() => {
+        const terminalSize = this.adjustTerminalSize();
+        if (!this.isInitialLoad) {
+          this.$refs.terminals.selected();
+        }
+        this.adjustTargetTreeSize(terminalSize);
+      }, 200); 
     }
   },
 };

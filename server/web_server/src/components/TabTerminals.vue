@@ -1,7 +1,7 @@
 <template>
   <v-container>
 <!--    <TerminalsTab @selected="selected"></TerminalsTab>-->
-    <TerminalsTabPlus @selected="selected"></TerminalsTabPlus>
+    <TerminalsTabPlus ref="TerminalsTabPlus" @selected="selected"></TerminalsTabPlus>
     <Terminal ref="terminal"></Terminal>
   </v-container>
 </template>
@@ -19,8 +19,12 @@ export default {
   },
   methods: {
     selected(terminal) {
-      this.$emit('selected', terminal);
-      this.$refs.terminal.selectTerminal(terminal.id);
+      if (terminal == null){
+        this.$refs.TerminalsTabPlus.selected();
+      } else{
+        this.$emit('selected', terminal);
+        this.$refs.terminal.selectTerminal(terminal.id);
+      }
     },
     executeCommand(command, appendNewline=false) {
       this.$refs.terminal.executeCommand(command, appendNewline);
