@@ -1,6 +1,7 @@
 const fs = require('fs');
 const notifier = require('routes/notifier');
-
+const child_process = require('child_process');
+const path = require('path');
 /**
  * @type {string}
  */
@@ -206,6 +207,29 @@ function getCommandLogString(terminalId, execId) {
   return log;
 }
 
+
+function archiveLogs(){
+  for (let terminalId in _logs) {
+    _logs[terminalId] = _logs[terminalId].slice(-100);
+  }
+  const timestamp = Date.now();
+  let newPath = "";
+  for (const filename of fs.readdirSync(LOGS_DIRECTORY)) {
+    if (/^logs[1-9]\.json$/.test(filename)) {
+      const oldPath = path.join(LOGS_DIRECTORY, filename);
+      newPath = path.join(LOGS_DIRECTORY, filename.replace('.json', `_${timestamp}.json`));
+      fs.rename(oldPath, newPath, (err) => {
+        if (err) {
+          console.error('Error renaming file:', err);
+        } else {
+          console.log(`Renamed ${oldPath} to ${newPath}`);
+        }
+      });
+    }
+  }
+  return newPath;
+}
+
 /**
  * REST API routing
  * @param {Object} router
@@ -242,6 +266,17 @@ function route(router) {
         res.send('{}');
       }
     });
+
+  /**
+   * REST API routing
+   * DELETE - Archive logs of the console.
+   */
+  router.delete('/:terminalId/archiveLogs', function (req, res, next) {
+    const newPath = archiveLogs();
+    res.send(newPath);
+  });
+
+
 }
 
 module.exports.setup = load;

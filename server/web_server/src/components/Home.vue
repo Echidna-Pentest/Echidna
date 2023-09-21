@@ -31,6 +31,18 @@
         </v-col>
       </v-col>
     </v-row>
+    <button class="archive-button" @click="showDialog">Archive Logs</button>
+    <v-dialog v-model="dialog" persistent max-width="490" @click:outside="closeDialog">
+      <v-card>
+        <v-card-title class="headline">Would you like to archive terminal logs? Please do this process when the response is slow. </v-card-title>
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn color="green darken-1" text @click="archiveLogs">Yes</v-btn>
+          <v-btn color="red darken-1" text @click="closeDialog = false">No</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+    <notifications group="bottom-center" position="bottom center"></notifications>
     <ChatBot />
   </v-card>
 </template>
@@ -44,6 +56,19 @@ html {
   margin: 0 auto;
   overflow-x: auto;
 }
+
+
+.archive-button {
+  position: fixed;
+  bottom: 70px;
+  right: 20px;
+  background-color: #4caf50;
+  color: white;
+  border: none;
+  padding: 10px;
+  border-radius: 5px;
+  cursor: pointer;
+}
 </style>
 
 <script>
@@ -51,6 +76,8 @@ import TabTerminals from '@/components/TabTerminals.vue';
 import Targets from '@/components/Targets.vue';
 import Candidates from '@/components/Candidates.vue';
 import ChatBot from '@/components/ChatBot.vue';
+import { EchidnaAPI } from '@echidna/api';
+const echidna = new EchidnaAPI(location.hostname);
 
 export default {
   name: 'Home',
@@ -72,11 +99,10 @@ export default {
   },
   data: () => ({
     candidate: false,
+    dialog: false,
     windowWidth: 0,
   }),
   mounted() {
-    const terminalSize = this.adjustTerminalSize();
-    this.adjustTargetTreeSize(terminalSize);
     this.$nextTick(() => {
       this.isInitialLoad = false;
     });
@@ -109,7 +135,29 @@ export default {
     selectCommand(command, appendNewline=false) {
       this.$refs.terminals.executeCommand(command, appendNewline);
     },
-
+    showDialog(){
+      this.dialog = true;
+    },
+    archiveLogs() {
+      this.dialog = false;
+      echidna
+      .archiveConsoleLog()
+      .then(({ data: targets }) => {
+        this.$notify({
+         title: 'Notification',
+         text: 'Log is archived to ' + targets,
+         duration:3000,
+         group: "bottom-center",
+         type: 'success'
+      });
+      })
+      .catch((error) => {
+        console.error(error);
+      });
+    },
+    closeDialog() {
+      this.dialog = false;
+    },
     onResize(){
       setTimeout(() => {
         const terminalSize = this.adjustTerminalSize();

@@ -14,6 +14,7 @@ import Chat from '@/components/ChatBot'
 import Login from '@/components/Login'
 import Graph from '@/components/Graph'
 import store from '@/store/index'
+import Notifications from 'vue-notification'
 
 Vue.config.productionTip = false
 Vue.use(VueRouter)
@@ -21,6 +22,7 @@ Vue.use(VuejsDialog)
 Vue.use(Chat)
 //Vue.use(Store)
 Vue.use(Login)
+Vue.use(Notifications)
 
 const config = require('../echidna.json');
 
