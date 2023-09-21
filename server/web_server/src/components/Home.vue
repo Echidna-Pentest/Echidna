@@ -38,7 +38,7 @@
         <v-card-actions>
           <v-spacer></v-spacer>
           <v-btn color="green darken-1" text @click="archiveLogs">Yes</v-btn>
-          <v-btn color="red darken-1" text @click="closeDialog = false">No</v-btn>
+          <v-btn color="red darken-1" text @click="closeDialog">No</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>

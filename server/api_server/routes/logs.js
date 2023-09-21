@@ -207,7 +207,10 @@ function getCommandLogString(terminalId, execId) {
   return log;
 }
 
-
+/**
+ * Archive terminal logs by adding time stamps and renaming terminal log files
+ * @returns {string} renamed file name
+ */
 function archiveLogs(){
   for (let terminalId in _logs) {
     _logs[terminalId] = _logs[terminalId].slice(-100);
