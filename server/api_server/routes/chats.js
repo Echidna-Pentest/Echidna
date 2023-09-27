@@ -81,13 +81,7 @@ function analysis(scanresult, isRequestedAnalysis = false){
           temperature: 0
         });
 //        console.log("AIAnalysis result=", completion.data.choices[0].text);
-        if (_chats.length === 0){
-          create(0, "text", "chatbot", completion.data.choices[0].text);
-//          create(0, "text", "chatbot", "AI Analysis code should be here");   //test code for AI analysis function
-        }else{
-          create(_chats[_chats.length -1].chatId + 1, "text", "chatbot", completion.data.choices[0].text);
-//          create(_chats[_chats.length -1].chatId + 1, "text", "chatbot", "AI Analysis code should be here");  //test code for AI analysis function
-        }
+          create("text", "chatbot", completion.data.choices[0].text);
       }
       try {
 //        getAiResponse("Please analyze the text below and let me know if you find something vulnerable. If not, please response with \"No\" \n"+scanresult);
@@ -109,7 +103,13 @@ function store() {
  * @param {string} name
  * @returns {Object}
  */
-function create(logid, type, author, data) {
+function create(type, author, data) {
+  let logid;
+  if (_chats.length === 0){
+    logid = 0;
+  } else{
+    logid = _chats[_chats.length -1].chatId + 1;
+  }
   const chat = new Chats(logid, type, author, data);
   _chats.push(chat);
   store();

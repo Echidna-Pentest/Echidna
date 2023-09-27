@@ -159,6 +159,13 @@ export default {
   border-radius: 5px;
 }
 
+.echidna {
+  padding: 5px;
+  margin: 5px;
+  background-color: rgba(128, 247, 255, 0.5);
+  border-radius: 5px;
+}
+
 
 .chat-input {
   display: flex;

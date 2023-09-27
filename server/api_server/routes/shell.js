@@ -2,6 +2,8 @@ const pty = require('node-pty');
 const commands = require('routes/commands');
 const logs = require('routes/logs');
 const targets = require('routes/targets');
+const chats = require('routes/chats');
+const criticalscandb = require('routes/criticalscandb');
 const child_process = require('child_process');
 const stream   = require( 'stream' );
 const process = require('process');
@@ -219,6 +221,10 @@ class Shell {
               }
             });
             logs.create(this.id, this.execNo, ++this.logSeqNo, this.command, status, output, new Date());
+            const result = criticalscandb.searchValue("CriticalScan", output);
+            if (result){
+              chats.create("text", "echidna", result.CriticalScan + " might be interesting. Similar machine is " + result.machine_name);
+            }
         }
     }
 
