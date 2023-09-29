@@ -9,6 +9,7 @@
         <v-btn to="/History" height="25">History</v-btn>
         <v-btn to="/graph" height="25">Graph</v-btn>
         <v-btn to="/TerminalList" height="25">Terminals</v-btn>
+        <v-btn to="/AddCmd" height="25">AddCmd</v-btn>
         <v-btn to="/about" height="25">About</v-btn>
       </v-app-bar>
     </header>

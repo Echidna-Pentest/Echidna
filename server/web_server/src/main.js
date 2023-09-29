@@ -7,6 +7,7 @@ import Home from '@/components/Home'
 import TerminalList from '@/components/TerminalList'
 import Terminal from '@/components/Terminal'
 import History from '@/components/History'
+import AddCmd from '@/components/AddCmd'
 import About from '@/components/About'
 import VuejsDialog from 'vuejs-dialog';
 import 'vuejs-dialog/dist/vuejs-dialog.min.css';
@@ -35,6 +36,7 @@ const routes = [
   { path: '/TerminalList', component: TerminalList,  meta: { requiresAuth: true } },
   { path: '/terminal/:id', component: Terminal,  meta: { requiresAuth: true } },
   { path: '/History', component: History,  meta: { requiresAuth: true } },
+  { path: '/AddCmd', component: AddCmd,  meta: { requiresAuth: true } },
   { path: '/about', component: About },
   { path: '/Login', component: Login },
   { path: '/Graph', component: Graph },

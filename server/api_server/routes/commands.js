@@ -336,21 +336,42 @@ function router() {
    * REST API routing
    * POST - command config addition
    */
-  router.post("/", function (req, res, next) {
-    if (
-      "name" in req.body &&
-      "template" in req.body &&
-      "pattern" in req.body &&
-      "output" in req.body &&
-      ("script" in req.body.output || "targets" in req.body.output)
-    ) {
-      console.log(`[Command] POST "${req.body.template}" from ${req.hostname}`);
-      const config = add(req.body);
-      res.send(JSON.stringify(config || {}));
-    } else {
-      console.log(`[Command] POST invalid from ${req.hostname}`);
-      res.send("{}");
-    }
+  router.post("/", function(req, res, next) {
+  	if (
+  		//      req.body.form.patterns && req.body.form.patterns !== "" &&
+  		req.body.form.templates && req.body.form.templates !== "" && req.body.form
+  		.name && req.body.form.name !== "") {
+  		console.log(
+  			`[Command] POST "${req.body.form.condition}", from ${req.hostname}`);
+  		let outputText =
+  			`
+[Echidna]
+pattern: any command is fine since no parser script
+name: ${req.body.form.name}
+`
+  		let config = [];
+  		for (const postedTemplate of req.body.form.templates) {
+  			outputText += 'template: ' + postedTemplate + '\n';
+  			config.template = postedTemplate;
+  			//          write(config);
+  		}
+  		config.name = req.body.form.name;
+  		if (req.body.form.condition != "") {
+  			outputText += "condition: " + req.body.form.condition + "\n";
+  			config.condition = req.body.form.condition;
+  		}
+  		config.group = req.body.form.group;
+  		add(config);
+  		outputText += "group: " + req.body.form.group + "\n[end]\n";
+  		fs.appendFile("commands/" + COMMAND_LISTFILE, outputText, er => {
+  				if (er) throw er
+  			})
+  			//  		console.log("outputText=", outputText);
+  		res.send(outputText);
+  	} else {
+  		console.log(`[Command] POST invalid from ${req.hostname}`);
+  		res.send("{}");
+  	}
   });
 
   /**
