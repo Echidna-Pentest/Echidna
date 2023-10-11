@@ -209,6 +209,12 @@ ftp, ssh, crackmapexec, vncviewer, telnet, rlogin, etc
 
 meterpreter related commands, spawn shell commands
 
+You can also add your own command from "ADDCMD" Page in real time.
+
+<img src="img/AddCmd.png" width="50%">
+<img src="img/testCommand.png" width="50%">
+
+
 
 ### Target Tree Export
 Export the contents of the Target Tree to md file by clicking the export button of the target tree.
@@ -242,6 +248,7 @@ You can also execute commands by clicking the candidate command.
 
 ### Target Tree Analysis (Under Development)
 Analyze Target Tree and highlight them if some critical vulnerabilities are found and display the Machine having the same vulnerability in the Hack The Box.
+This result is also notified via chat component too.
 
 Example)
 - "vsftpd 2.3.4" added in Target tree -> highlighted and a popup displays "Similar machine is HackTheBox Lame".
@@ -249,6 +256,7 @@ Example)
 - "smb-vuln-ms17-010" added in Target tree -> highlighted and a popup displays "Similar machine is HackTheBox Legacy"
 
 <img src="img/highlight.png" width="50%">
+<img src="img/chathighlight.png" width="50%">
 
 if "AIAnalysis" property is true  and the API key of ChatGPT is set in the configuration file (echidna.json), the target tree is analyzed automatically and the analysis result can be displayed in the chat.
 
