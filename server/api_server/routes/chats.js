@@ -178,11 +178,10 @@ function router() {
         config.AIAnalysis = true;
       }
       if (_chats.length === 0){
-        create(0, req.body.message.type, req.body.message.author, req.body.message.data);
+        create(req.body.message.type, req.body.message.author, req.body.message.data);
       }else{
-        create(_chats[_chats.length -1].chatId+1, req.body.message.type, req.body.message.author, req.body.message.data);
+        create(req.body.message.type, req.body.message.author, req.body.message.data);
       }
-//      console.log("req.body.message.data=", req.body.message.data);
       if (req.body.message.data.substring(0,3) == "@AI"){
         analysis(req.body.message.data.substring(3), true);
       }
