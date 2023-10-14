@@ -4,6 +4,7 @@ const notifier = require('routes/notifier');
 const axios = require('axios');
 const config = require('../echidna.json');
 const { Configuration, OpenAIApi } = require("openai");
+const OpenAIClient = require('openai'); 
 
 /**
 * @type {string}
@@ -43,51 +44,56 @@ class Chats {
   }
 }
 
-function analysis(scanresult, isRequestedAnalysis = false){
-  if (config.AIAnalysis || isRequestedAnalysis){
-    if (scanresult!=null && scanresult != ''){
-      async function checkApiKey() {
-        try {
-          const response = await axios.get("https://api.openai.com/v1/engines", {
-            headers: {
-              "Authorization": `Bearer ${config.apiKey}`
-            }
-          });
-          return true;
-        } catch (error) {
-          console.error("Error checking API key:", error.message);
-          return false;
-        }finally {
-          console.log("check API Key done");
-//          return false;
-        }
+async function checkApiKey() {
+  try {
+    const response = await axios.get("https://api.openai.com/v1/engines", {
+      headers: {
+        "Authorization": `Bearer ${config.apiKey}`
       }
+    });
+    return true; // You might want to add further checks on the 'response'.
+  } catch (error) {
+    console.error("Error checking API key:", error.message);
+    return false;
+  }
+}
 
+async function getAiResponse(topic) {
+  if (!await checkApiKey()) {
+    console.error("Invalid API Key");
+    create("text", "chatbot", "Invalid API Key");
+    return;
+  }
 
-      async function getAiResponse(topic) {
-        const configuration = new Configuration({
-          apiKey: config.apiKey,
-        });
-        const openai = new OpenAIApi(configuration);
-        if (await checkApiKey()==false){
-          return;
-        };
-        const completion = await openai.createCompletion({
-          model: "text-davinci-003",
-  //        model: "text-ada-001",
-          prompt: topic,
-          max_tokens: 700,
-          n: 1,
-          temperature: 0
-        });
-//        console.log("AIAnalysis result=", completion.data.choices[0].text);
-          create("text", "chatbot", completion.data.choices[0].text);
-      }
+  const openai = new OpenAIClient({ apiKey: config.apiKey });
+
+  const messages = [
+    { role: "system", content: "You are a penetration test assistant. Please find the vulnerability or exploit code or attack vector\n" },
+    { role: "user", content: topic }
+  ];
+
+  try {
+    const chatCompletion = await openai.chat.completions.create({
+      model: "gpt-4",
+      messages: messages,
+      max_tokens: 250,
+      temperature: 0.5,
+    });
+
+    create("text", "chatbot", chatCompletion.choices[0].message.content);
+  } catch (error) {
+    create("text", "chatbot", "Error during AI response retrieval:" + error);
+    console.error("Error during AI response retrieval:", error);
+  }
+}
+
+function analysis(scanresult, isRequestedAnalysis = false) {
+  if (config.AIAnalysis || isRequestedAnalysis) {
+    if (scanresult != null && scanresult != '') {
       try {
-//        getAiResponse("Please analyze the text below and let me know if you find something vulnerable. If not, please response with \"No\" \n"+scanresult);
-        getAiResponse("Please analyze the scan result below and let me know if you find something vulnerable. \n"+scanresult);
-      }catch (err) {
-        console.log(err.name + ': ' + err.message);
+        getAiResponse(scanresult);
+      } catch (err) {
+        console.error(err.name + ': ' + err.message);
       }
     }
   }
