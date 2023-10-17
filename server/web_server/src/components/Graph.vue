@@ -273,16 +273,19 @@ export default {
       this.network = new Network(container, data, options);
 
       this.network.on("click", (properties) => {
-        if (properties.nodes[0] == undefined) {
-          // return if the empty space is clicked
-          return;
-        }
-        this.clickedId = properties.nodes[0];
-        echidna.getAllChildren(this.clickedId).then(({ data: childtarget }) => {
-          // get all children of the clicked node and draw by v-treeview
-          this.targets.splice(0, 1, this.convertTargets(childtarget));
-          this.showDialog(this.targets);
-        });
+        setTimeout(() => {
+          properties.event.preventDefault();
+          if (properties.nodes[0] == undefined) {
+            // return if the empty space is clicked
+            return;
+          }
+          this.clickedId = properties.nodes[0];
+          echidna.getAllChildren(this.clickedId).then(({ data: childtarget }) => {
+            // get all children of the clicked node and draw by v-treeview
+            this.targets.splice(0, 1, this.convertTargets(childtarget));
+            this.showDialog(this.targets);
+          });
+        }, 300);
       });
     },
     showCommand() {
@@ -316,4 +319,5 @@ export default {
     },
   },
 };
+
 </script>
