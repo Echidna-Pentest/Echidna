@@ -187,10 +187,10 @@
 import { EchidnaAPI } from '@echidna/api';
 const echidna = new EchidnaAPI(location.hostname);
 var targetsData = [{ id: 0, name: 'targets', parent: null, children: [] }];
-var clickeditem = "";
 export default {
   data: () => ({
     targets: targetsData,
+    clickeditem: "",
     active: [],
     open: [],
     search: null,
@@ -257,7 +257,7 @@ export default {
       return elements;
     },
     showDialog(item){
-      clickeditem = item;
+      this.clickeditem = item;
       if (item.parent.value == "host"){
         this.ishostclicked = true;
       } else{
@@ -286,7 +286,7 @@ export default {
       const inputdata = {os: this.os, root: this.root,  Credential: {userid: this.userId, password: this.password}, notes: this.notes};
       this.dialog = false;
       echidna
-      .updateTarget(clickeditem.id, inputdata)
+      .updateTarget(this.clickeditem.id, inputdata)
       .then(({ data: target }) => {
         console.debug("target: add", target);
       })
