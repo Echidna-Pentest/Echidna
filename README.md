@@ -31,7 +31,7 @@ There are two ways to start the servers.
 - Start the servers on your Kali Linux system.
 - Start the servers in docker containers on your Linux system.
 
-Execute "sudo install.sh", or execute the commands below to install manually. 
+Execute "sh ./install.sh", or execute the commands below to install manually. 
 
 ### Install Node.js
 
