@@ -1,171 +1,164 @@
 [
-    {
-      "machine_name": "Legacy",
-      "scan_tool": "nmap",
-      "CriticalScan": "ms17-010"
-    },
-    {
-      "machine_name": "metasploitable",
-      "scan_tool": "nmap",
-      "CriticalScan": "vsFTPd version 2.3.4 backdoor"
-    },
-    {
-      "machine_name": "Access",
-      "scan_tool": "nmap",
-      "CriticalScan": "ftp-anon: Anonymous FTP login allowed"
-    },
-    {
-      "machine_name": "Blue",
-      "scan_tool": "smbmap",
-      "CriticalScan": "ms17-010"
-    },
-    {
-      "machine_name": "Granny",
-      "exploit_process": [
-        {
-          "scan_tool": "nmap",
-          "CriticalScan": "Microsoft IIS httpd 6.0"
-        },
-        {
-          "scan_tool": "nmap",
-          "CriticalScan": "http-webdav-scan:"
-        }
-      ]
-    },
-    {
-      "machine_name": "Devel",
-      "scan_tool": "nmap",
-      "CriticalScan": "Anonymous FTP login allowed"
-    },
-    {
-      "machine_name": "Chatterbox",
-      "scan_tool": "nmap",
-      "CriticalScan": "AChat"
-    },
-    {
-      "machine_name": "Irked",
-      "scan_tool": "nmap",
-      "CriticalScan": "UnrealIRCd"
-    },
-    {
-      "machine_name": "Bastion",
-      "scan_tool": "smbmap",
-      "CriticalScan": "READ, WRITE"
-    },
-    {
-      "machine_name": "Active",
-      "scan_tool": "smbmap",
-      "CriticalScan": "READ ONLY"
-    },
-    {
-      "machine_name": "Optimum",
-      "scan_tool": "nmap",
-      "CriticalScan": "HFS 2.3"
-    },
-    {
-      "machine_name": "Netmon",
-      "scan_tool": "nmap",
-      "CriticalScan": "ftp-anon: Anonymous FTP login allowed"
-    },
-    {
-      "machine_name": "Lame",
-      "scan_tool": "nmap",
-      "CriticalScan": "vsftpd 2.3.4"
-    },
-    {
-      "machine_name": "Jerry",
-      "scan_tool": "nikto",
-      "CriticalScan": "s3cret"
-    },
-    {
-      "machine_name": "Jeeves",
-      "exploit_process": [
-        {
-          "scan_tool": "nmap",
-          "CriticalScan": "JEEVES"
-        },
-        {
-          "scan_tool": "dirb",
-          "CriticalScan": "/askjeeves"
-        }
-      ]
-    },
-    {
-      "machine_name": "Remote",
-      "scan_tool": "nmap",
-      "exploit_process": [
-        {
-          "scan_tool": "dirb",
-          "CriticalScan": "Umbraco"
-        },
-        {
-          "scan_tool": "showmount",
-          "CriticalScan": "everyone"
-        }
-      ]
-    },
-    {
-      "machine_name": "Shocker",
-      "scan_tool": "dirb",
-      "CriticalScan": "cgi-bin"
-    },
-    {
-      "machine_name": "Nibbles",
-      "scan_tool": "dirb",
-      "CriticalScan": "nibbleblog"
-    },
-    {
-      "machine_name": "Poison",
-      "scan_tool": "dirb",
-      "CriticalScan": "listfiles.php"
-    },
-    {
-      "machine_name": "SwagShop",
-      "exploit_process": [
-        {
-          "scan_tool": "nmap",
-          "CriticalScan": "Magento"
-        },
-        {
-          "scan_tool": "dirb",
-          "CriticalScan": "/mage"
-        }
-      ]
-    },
-    {
-      "machine_name": "October",
-      "exploit_process": [
-        {
-          "scan_tool": "nmap",
-          "CriticalScan": "October CMS"
-        },
-        {
-          "scan_tool": "dirb",
-          "CriticalScan": "/backend"
-        }
-      ]
-    },
-    {
-      "machine_name": "help",
-      "scan_tool": "dirb",
-      "CriticalScan": "graphql"
-    },
-    {
-      "machine_name": "Bounty",
-      "scan_tool": "dirb",
-      "CriticalScan": "transfer.aspx"
-    },
-    {
-      "machine_name": "Grandpa",
-      "exploit_process": [
-        {
-          "scan_tool": "nmap",
-          "CriticalScan": "IIS httpd 6.0"
-        },
-        {
-          "scan_tool": "nmap",
-          "CriticalScan": "WebDAV"
-        }
-      ]
-    }
-  ]
+	{
+		"machine_name": "Legacy",
+		"scan_tool": "nmap",
+		"CriticalScan": "ms17-010"
+	},
+	{
+		"machine_name": "Blue",
+		"scan_tool": "smbmap",
+		"CriticalScan": "ms17-010"
+	},
+	{
+		"machine_name": "Granny",
+		"exploit_process": [
+			{
+				"scan_tool": "nmap",
+				"CriticalScan": "Microsoft IIS httpd 6.0"
+			},
+			{
+				"scan_tool": "nmap",
+				"CriticalScan": "http-webdav-scan:"
+			}
+		]
+	},
+	{
+		"machine_name": "Chatterbox",
+		"scan_tool": "nmap",
+		"CriticalScan": "AChat"
+	},
+	{
+		"machine_name": "Irked",
+		"scan_tool": "nmap",
+		"CriticalScan": "UnrealIRCd"
+	},
+	{
+		"machine_name": "Bastion",
+		"scan_tool": "smbmap",
+		"CriticalScan": "READ, WRITE"
+	},
+	{
+		"machine_name": "Active",
+		"scan_tool": "smbmap",
+		"CriticalScan": "READ ONLY"
+	},
+	{
+		"machine_name": "Optimum",
+		"scan_tool": "nmap",
+		"CriticalScan": "HFS 2.3"
+	},
+	{
+		"machine_name": "Lame, Metasploitable",
+		"exploit_process": [
+			{
+				"scan_tool": "nmap",
+				"CriticalScan": "vsftpd 2.3.4"
+			},
+			{
+				"scan_tool": "smpmap",
+				"CriticalScan": "Samba 3.0.2"
+			}
+		]
+	},
+	{
+		"machine_name": "Jerry",
+		"scan_tool": "nikto",
+		"CriticalScan": "s3cret"
+	},
+	{
+		"machine_name": "Jeeves",
+		"exploit_process": [
+			{
+				"scan_tool": "nmap",
+				"CriticalScan": "JEEVES"
+			},
+			{
+				"scan_tool": "dirb",
+				"CriticalScan": "/askjeeves"
+			}
+		]
+	},
+	{
+		"machine_name": "Remote",
+		"scan_tool": "nmap",
+		"exploit_process": [
+			{
+				"scan_tool": "dirb",
+				"CriticalScan": "Umbraco"
+			},
+			{
+				"scan_tool": "showmount",
+				"CriticalScan": "everyone"
+			}
+		]
+	},
+	{
+		"machine_name": "Shocker",
+		"scan_tool": "dirb",
+		"CriticalScan": "cgi-bin"
+	},
+	{
+		"machine_name": "Nibbles",
+		"scan_tool": "dirb",
+		"CriticalScan": "nibbleblog"
+	},
+	{
+		"machine_name": "Poison",
+		"scan_tool": "dirb",
+		"CriticalScan": "listfiles.php"
+	},
+	{
+		"machine_name": "SwagShop",
+		"exploit_process": [
+			{
+				"scan_tool": "nmap",
+				"CriticalScan": "Magento"
+			},
+			{
+				"scan_tool": "dirb",
+				"CriticalScan": "/mage"
+			}
+		]
+	},
+	{
+		"machine_name": "October",
+		"exploit_process": [
+			{
+				"scan_tool": "nmap",
+				"CriticalScan": "October CMS"
+			},
+			{
+				"scan_tool": "dirb",
+				"CriticalScan": "/backend"
+			}
+		]
+	},
+	{
+		"machine_name": "help",
+		"scan_tool": "dirb",
+		"CriticalScan": "graphql"
+	},
+	{
+		"machine_name": "Access, Devel, Netmon",
+		"scan_tool": "nmap",
+		"CriticalScan": "Anonymous FTP login allowed"
+	},
+	{
+		"machine_name": "Bounty",
+		"scan_tool": "dirb",
+		"CriticalScan": "transfer.aspx"
+	},
+	{
+		"machine_name": "Grandpa",
+		"exploit_process": [
+			{
+				"scan_tool": "nmap",
+				"CriticalScan": "IIS httpd 6.0"
+			},
+			{
+				"scan_tool": "nmap",
+				"CriticalScan": "WebDAV"
+			}
+		]
+	}
+]
