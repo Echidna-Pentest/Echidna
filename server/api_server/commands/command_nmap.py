@@ -27,6 +27,10 @@ read nmap output and output target TSV(Tab Separated Value)
 # template: nmap -Pn -A -T4 {host}
 # template: nmap -Pn -A -T4 {ipv4}
 # template: nmap -Pn -A -T4 {ipv6}
+# name: OS scan using nmap
+# template: sudo nmap -Pn -O -T4 {host}
+# template: sudo nmap -Pn -O -T4 {ipv4}
+# template: sudo nmap -Pn -O -T4 {ipv6}
 # [end]
 
 
@@ -84,7 +88,10 @@ def ports(lines):
         else:
             yield service
         for detail in port_details(lines):
-            yield *service, *detail
+            if (detail[0] == "OS"):
+                yield detail
+            else:
+                yield *service, *detail
 
 
 def port_details(lines):
@@ -111,6 +118,10 @@ def port_details(lines):
                 while lines and lines.fetch()[:1] == '|':
                     for detail in vuln_details(lines):
                         yield detail
+            elif "OS details:" in line:
+                match = re.search(r'OS details:\s*(Linux|Window).*', line)
+                if match:
+                    yield "OS", match.group(1)
             elif line == '\n':
                 continue
             else:
