@@ -192,7 +192,7 @@ function findExploit(target){
   }
 }
 
-function findChildOfHost(target, nodes) {
+function findChildOfHost(target) {
   let currentNode = target;
 
   while (currentNode.parent !== -1) {
@@ -229,7 +229,7 @@ function analyzeTarget() {
       findExploit(target);
     }
     if (target.value == "OS"){
-      const childOfHost = findChildOfHost(target, _targets);
+      const childOfHost = findChildOfHost(target);
       childOfHost.metadata.os = _targets[target.children].value;
 //      _targets[targetId].metadata.os = inputdata.os;
     }
