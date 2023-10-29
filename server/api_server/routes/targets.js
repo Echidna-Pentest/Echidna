@@ -192,6 +192,20 @@ function findExploit(target){
   }
 }
 
+function findChildOfHost(target, nodes) {
+  let currentNode = target;
+
+  while (currentNode.parent !== -1) {
+    const parentNode = _targets[currentNode.parent];
+    if (parentNode.value === "host") {
+      return currentNode;
+    }
+    currentNode = parentNode;
+  }
+  return null;
+}
+
+
 /**
  * Analyze targets data
  */
@@ -213,6 +227,11 @@ function analyzeTarget() {
     }
     if (target.value == "version"){
       findExploit(target);
+    }
+    if (target.value == "OS"){
+      const childOfHost = findChildOfHost(target, _targets);
+      childOfHost.metadata.os = _targets[target.children].value;
+//      _targets[targetId].metadata.os = inputdata.os;
     }
   }
 //  console.log("AnalyzeTarget: changedTarget=", changedTarget);
