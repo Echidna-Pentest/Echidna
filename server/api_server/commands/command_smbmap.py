@@ -46,22 +46,19 @@ def find_host(lines):
 def targets(lines):
     while lines:
         host, port = find_host(lines)
-        count = 0
         for line in lines:
             print('line:', line, file=log)
             # read header data
             # yield scan results
-            if (line == '\n'):
+            if line == '\n':
                 break
-#            scandetails = re.sub('\s{2,}|\t', '| ', line)
-            scandetails = re.split('\s{2,}|\t', line)
-            if '\n' not in scandetails[3]:
-                scandetails[3] = scandetails[3] + '\n'
-            tmp = str(count)
-            yield *host, "port", f'{port}', 'SMBDrive', scandetails[1]+ '\n'
-            yield *host, "port", f'{port}', 'SMBperm', tmp+scandetails[2] + '\n'
-            yield *host, "port", f'{port}', 'SMBcomment', tmp+scandetails[3] 
-            count = count + 1
+            if "NO ACCESS" not in line:
+                scandetails = re.split('\s{2,}|\t', line)
+                if '\n' not in scandetails[3]:
+                    scandetails[3] = scandetails[3] + '\n'
+                yield *host, "port", f'{port}', 'SMBDrive', scandetails[1]+ '\n'
+                yield *host, "port", f'{port}', 'SMBDrive', scandetails[1], 'Permissions: ' + scandetails[2] + '\n'
+                yield *host, "port", f'{port}', 'SMBDrive', scandetails[1], 'Comment: ' + scandetails[3]  + '\n'
 
 if __name__ == '__main__':
     main(sys.stdin)
