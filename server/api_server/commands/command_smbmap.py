@@ -54,11 +54,12 @@ def targets(lines):
                 break
             if "NO ACCESS" not in line:
                 scandetails = re.split('\s{2,}|\t', line)
-                if '\n' not in scandetails[3]:
-                    scandetails[3] = scandetails[3] + '\n'
-                yield *host, "port", f'{port}', 'SMBDrive', scandetails[1]+ '\n'
-                yield *host, "port", f'{port}', 'SMBDrive', scandetails[1], 'Permissions: ' + scandetails[2] + '\n'
-                yield *host, "port", f'{port}', 'SMBDrive', scandetails[1], 'Comment: ' + scandetails[3]  + '\n'
+                if len(scandetails) > 3:
+                    if '\n' not in scandetails[3]:
+                        scandetails[3] = scandetails[3] + '\n'
+                    yield *host, "port", f'{port}', 'SMBDrive', scandetails[1]+ '\n'
+                    yield *host, "port", f'{port}', 'SMBDrive', scandetails[1], 'Permissions: ' + scandetails[2] + '\n'
+                    yield *host, "port", f'{port}', 'SMBDrive', scandetails[1], 'Comment: ' + scandetails[3]  + '\n'
 
 if __name__ == '__main__':
     main(sys.stdin)
