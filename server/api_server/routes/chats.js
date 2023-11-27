@@ -67,8 +67,13 @@ async function getAiResponse(topic) {
 
   const openai = new OpenAIClient({ apiKey: config.apiKey });
 
-  const messages = [
+/*  const messages = [
     { role: "system", content: "You are a penetration test assistant. Please find the vulnerability or exploit code or attack vector\n" },
+    { role: "user", content: topic }
+  ];*/
+
+  const messages = [
+    { role: "system", content: "You are a penetration test assistant. Analyze the provided string for security risks, vulnerabilities, or potential for exploitation. For a 'HIGH RISK' finding, reply with 'HIGH RISK: ' plus briefly state the risk and necessary steps for exploitation. For 'LOW RISK' or 'NONE', just simply reply with the category ('LOW RISK' or 'NONE') only.\n" },
     { role: "user", content: topic }
   ];
 
@@ -80,7 +85,11 @@ async function getAiResponse(topic) {
       temperature: 0.5,
     });
 
-    create("text", "chatbot", chatCompletion.choices[0].message.content);
+    if (chatCompletion.choices[0].message.content.indexOf('HIGH RISK')!== -1){
+      create("text", "chatbot", chatCompletion.choices[0].message.content);
+    }else{
+      console.log("NOT HIGH RISK analysis: ", chatCompletion.choices[0].message.content);
+    }
   } catch (error) {
     create("text", "chatbot", "Error during AI response retrieval:" + error);
     console.error("Error during AI response retrieval:", error);
