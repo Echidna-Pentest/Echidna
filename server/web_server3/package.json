@@ -1,0 +1,36 @@
+{
+  "name": "echidna_web",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "serve": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "lint": "eslint . --ignore-path .gitignore"
+  },
+  "dependencies": {
+    "@echidna/api": "file:../../lib",
+    "@mdi/font": "7.4.47",
+    "core-js": "^3.35.0",
+    "pinia": "^2.1.7",
+    "roboto-fontface": "*",
+    "vis-data": "^7.1.9",
+    "vis-network": "^9.1.9",
+    "vis-util": "^5.0.7",
+    "vue": "^3.4.14",
+    "vue-router": "^4.2.5",
+    "vue3-treeview": "^0.4.2",
+    "vuetify": "^3.4.10",
+    "xterm": "^5.3.0",
+    "xterm-addon-fit": "^0.8.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^4.6.2",
+    "eslint": "^8.56.0",
+    "eslint-plugin-vue": "^9.20.1",
+    "sass": "^1.70.0",
+    "unplugin-fonts": "^1.1.1",
+    "vite": "^4.5.1",
+    "vite-plugin-vuetify": "^1.0.2"
+  }
+}
