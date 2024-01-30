@@ -29,7 +29,6 @@ const searchTarget = (text) => targetTree.value.setFilter(text);
 
 const emits = defineEmits(['selected']);
 const selectedTarget = (target) => {
-  console.debug('Targets.selectedTarget:', target.text);
   emits('selected', target);
 };
 </script>
