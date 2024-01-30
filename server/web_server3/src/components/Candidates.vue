@@ -62,17 +62,18 @@
   });
 
   const setTarget = (id) => {
-      targetId = id;
-      updateCandidates();
+    targetId = id;
+    updateCandidates();
   };
 
   const setTerminal = (id) => {
-      terminalId = id;
-      updateCandidates();
+    terminalId = id;
+    updateCandidates();
   };
 
   const updateCandidates = () => {
-    return echidna.candidates(targetId, terminalId)
+    return echidna
+        .candidates(targetId, terminalId)
         .then(commands => {
           noGroupedCommands.value =
             commands.filter(command => command.group === undefined)
@@ -84,6 +85,9 @@
           groupedCommands.value =
             groups.map(group => [group, commands.filter(command => command.group === group)
                                                 .sort(compare)]);
+        })
+        .catch((error) => {
+          console.error(error);
         });
   };
 
