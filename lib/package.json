@@ -2,6 +2,7 @@
   "name": "@echidna/api",
   "version": "0.5.0",
   "description": "Echidna Web API Library",
+  "type": "module",
   "main": "echidnaapi.js",
   "private": true,
   "scripts": {
