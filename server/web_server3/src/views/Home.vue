@@ -30,6 +30,7 @@
           color="yellow-lighten-4"
           ref=targetsCard
           style="height: 60vh"
+          scrollable
           outlined
         >
           <v-card-title>
@@ -56,6 +57,7 @@
           ref=candidatesCard
           color="green-lighten-4"
           style="height: 40%"
+          scrollable
           outlined
         >
           <v-card-title>
@@ -74,6 +76,8 @@
         </v-card>
       </v-col>
     </v-row>
+    <LogArchive />
+    <ChatBot />
   </div>
 </template>
 
@@ -83,6 +87,8 @@
   import TargetExport from '@/components/TargetExport.vue'
   import TargetTree from '@/components/TargetTree.vue'
   import Candidates from '@/components/Candidates.vue'
+  import LogArchive from '@/components/LogArchive.vue'
+  import ChatBot from '@/components/ChatBot.vue'
   import { ref } from 'vue';
 
   const terminalsDiv = ref();
@@ -143,27 +149,3 @@
   }
 
 </script>
-
-<style>
-.v-treeview-node__content, .v-treeview-node__label {
-  white-space: normal ;
-  font-size: small;
-}
-
-html {
-  margin: 0 auto;
-}
-
-.archive-button {
-  position: fixed;
-  bottom: 70px;
-  right: 20px;
-  background-color: #4caf50;
-  color: white;
-  border: none;
-  padding: 10px;
-  border-radius: 5px;
-  cursor: pointer;
-}
-</style>
-

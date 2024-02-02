@@ -13,6 +13,7 @@ import { registerPlugins } from '@/plugins'
 
 // Components
 import App from './App.vue'
+import Notifications from '@kyvg/vue3-notification'
 
 // Composables
 import { createApp } from 'vue'
@@ -24,4 +25,5 @@ registerPlugins(app)
 app.config.globalProperties.$isLogin = true;
 app.config.globalProperties.$echidna = echidna;
 app.provide("$echidna", echidna);
+app.use(Notifications);
 app.mount('#app')
