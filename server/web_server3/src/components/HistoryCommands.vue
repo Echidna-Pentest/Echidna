@@ -2,14 +2,15 @@
   <v-list
     class="overlflow-x-auto overflow-y-auto"
     max-height="430"
-    outlined
-    rounded
     density="compact"
   >
     <v-list-item
       v-for="(history, index) in histories"
       :key="index"
+      :value="history"
       :title="history.command"
+      rounded="xl"
+      color="pink"
       @click="selected(history, index)"
     >
       <v-tooltip
@@ -26,32 +27,30 @@
   import { ref, inject, onMounted } from 'vue';
 
   const histories = ref([]);
-  const select = ref(undefined);
   const emits = defineEmits(['selected']);
 
   const echidna = inject("$echidna");
   let terminalId = 0;
   let lastLogId = -1;
   let logs = [];
-  let historiesIndex = undefined;
+  let selectedIndex = undefined;
 
   onMounted(() => {
-    echidna.on('logs', () => updateLogs());
-    return updateLogs();
+    echidna.on('logs', () => update());
+    return update();
   });
 
   const selectTerminal = (terminal) => {
     terminalId = terminal.id;
     lastLogId = -1;
     logs = [];
-    historiesIndex = undefined;
-    select.value = undefined;
+    selectedIndex = undefined;
     histories.value = [];
     emits('selected', {});
-    return updateLogs();
+    return update();
   };
 
-  const updateLogs = () => {
+  const update = () => {
     return echidna
       .logs(terminalId, lastLogId + 1)
       .then(({ data: newLogs }) => {
@@ -59,30 +58,27 @@
           logs = [...logs, ...newLogs];
           lastLogId = newLogs.slice(-1)[0].id;
         }
-        updateHistories();
+        histories.value = logs
+          ?.filter((log) => log.seqId == 1 && log.command.match(/.*(\r|\n)$/))
+          .map((log) => ({
+              command: log.command.trim(),
+              date: new Date(log.date).toLocaleString(),
+              logsIndex: logs.indexOf(log),
+            })
+          );
       })
       .catch((error) => {
-        console.log(`ERROR: update history logs: ${error}`);
+        console.error('HistoryCommands.update:', error);
       });
   };
 
-  const updateHistories = () => {
-    histories.value = logs
-      ?.filter((log) => log.seqId == 1 && log.command.match(/.*(\r|\n)$/))
-      .map((log) => ({
-          command: log.command.trim(),
-          date: new Date(log.date).toLocaleString(),
-          logsIndex: logs.indexOf(log),
-        })
-      );
-  };
-
   const selected = (history, index) => {
-    if (index === historiesIndex) {  // select off
+    if (index === selectedIndex) {  // select off
+      selectedIndex = undefined;
       emits('selected', {});
       return;
     }
-    historiesIndex = index;
+    selectedIndex = index;
     let seqId = 0;
     let output = '';
     for (const log of logs.slice(history.logsIndex)) {
