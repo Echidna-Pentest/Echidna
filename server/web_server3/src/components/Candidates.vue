@@ -1,49 +1,49 @@
 <template>
-  <v-list density="compact">
+  <v-list
+    density="compact"
+    v-model:opened="opened"
+  >
     <v-list-item
       v-for="(command, index) in noGroupedCommands"
       :key="index"
+      :title="command.candidate"
       @click="selected"
     >
-      <v-list-item-title>
-        {{ command.candidate }}
-      </v-list-item-title>
       <v-tooltip
         activator="parent"
         location="left"
-      >
-        {{ command.name }}
-      </v-tooltip>
+        :text="command.name"
+      />
     </v-list-item>
-  </v-list>
 
-  <v-list>
     <v-list-group
       v-for="([group, commands], index) in groupedCommands"
       :key="index"
+      :value="group"
       no-action
-      dense
+      base-color="error"
+      color="success"
     >
-      <template v-slot:activator>
-        <v-list-item-title>
-          {{ group }}
-        </v-list-item-title>
+      <template
+        v-slot:activator="{ props }"
+      >
         <v-list-item
-          v-for="(command, index) in commands"
-          :key="index"
-          @click="selected"
-        >
-          <v-list-item-title>
-            {{ command.candidate }}
-          </v-list-item-title>
-          <v-tooltip
-            activator="parent"
-            location="left"
-          >
-            {{ command.name }}
-          </v-tooltip>
-        </v-list-item>
+          v-bind="props"
+          :title="group"
+        />
       </template>
+      <v-list-item
+        v-for="(command, index) in commands"
+        :key="index"
+        :title="command.candidate"
+        @click="selected"
+      >
+        <v-tooltip
+          activator="parent"
+          location="left"
+          :text="command.name"
+        />
+      </v-list-item>
     </v-list-group>
   </v-list>
 </template>
@@ -52,6 +52,7 @@
   import { ref, inject, onMounted } from 'vue';
 
   const echidna = inject("$echidna");
+  const opened = ref([]);
   const noGroupedCommands = ref([]);
   const groupedCommands = ref([]);
   let targetId = 0;
@@ -84,7 +85,8 @@
             .sort((grp1, grp2) => grp1.localeCompare(grp2));
           groupedCommands.value =
             groups.map(group => [group, commands.filter(command => command.group === group)
-                                                .sort(compare)]);
+                                                      .sort(compare)]);
+          opened.value = groups;
         })
         .catch((error) => {
           console.error(error);
