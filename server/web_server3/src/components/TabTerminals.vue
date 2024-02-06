@@ -6,7 +6,7 @@
       @error="showError"
     />
     <Terminal
-      ref=terminal
+      ref="terminal"
     />
   </v-container>
 </template>

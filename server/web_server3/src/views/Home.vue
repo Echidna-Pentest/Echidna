@@ -16,7 +16,7 @@
         >
           <div style="color: red;">{{ error }}</div>
           <TabTerminals
-            ref=terminals
+            ref="terminals"
             @selected="terminalSelected"
             @error="showError"
           />
@@ -28,7 +28,7 @@
         <v-card
           class="targettree"
           color="yellow-lighten-4"
-          ref=targetsCard
+          ref="targetsCard"
           style="height: 60vh"
           scrollable
           outlined
@@ -46,30 +46,28 @@
           </v-card-title>
           <v-card-text>
             <TargetTree
-              ref=targetTree
+              ref="targetTree"
               @selected="selectedTarget"
               style="height: 45vh; overflow-y: auto;"
             />
           </v-card-text>
         </v-card>
         <v-card
+          title="Candidate commands:"
           class="candidatecommand"
-          ref=candidatesCard
+          ref="candidatesCard"
           color="green-lighten-4"
           style="height: 40%"
           scrollable
           outlined
         >
-          <v-card-title>
-            Candidate commands:
-          </v-card-title>
           <v-card-text >
             <div
               style="height: 30vh; overflow-y: auto;"
             >
               <Candidates
-                ref=candidates
-                @selected=executeCommand
+                ref="candidates"
+                @selected="executeCommand"
               />
             </div>
           </v-card-text>

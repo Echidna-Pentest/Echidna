@@ -16,7 +16,7 @@
       >
         +
         <TargetAddDialog
-          ref=addDialog
+          ref="addDialog"
         />
       </v-btn>
       <v-btn
@@ -27,7 +27,7 @@
       >
         -
         <TargetDeleteDialog
-          ref=deleteDialog
+          ref="deleteDialog"
         />
       </v-btn>
     </template>

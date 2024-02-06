@@ -12,7 +12,7 @@
       />
     </div>
     <TargetTree
-       ref=targetTree
+       ref="targetTree"
        @selected="selectedTarget"
     />
   </div>
