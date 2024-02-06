@@ -92,6 +92,8 @@
   const show = (targetId) => {
     if (targetId == undefined) return;
     dialog.value = true;
+    commandDialog.value = false;
+    terminalDialog.value = false;
     setTimeout(() => {
       console.debug("targettree", targettree);
       targettree.value.changeRoot(targetId);
