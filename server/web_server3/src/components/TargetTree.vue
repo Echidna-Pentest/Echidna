@@ -4,6 +4,8 @@
     :config="config"
     :nodes="nodes"
     @nodeFocus="selected"
+    @nodeOpened="nodeOpened"
+    @nodeClosed="nodeClosed"
   >
     <template #after-input="{node}">
       <v-btn
@@ -43,6 +45,7 @@ const addDialog = ref();
 const deleteDialog = ref();
 
 const echidna = inject('$echidna');
+const STORAGE_OPENED = "TargetTree.opened"
 
 const config = ref({
   roots: ["id0"],
@@ -69,8 +72,10 @@ const selected = (node) => {
   emits('selected', targets[node.targetId]);
 };
 let targets = [];
+let openedTargetIds = [];
 
 onMounted(() => {
+  loadOpenedTargetIds();
   echidna.on('targets', updateTargets);
   return updateTargets();
 });
@@ -81,7 +86,7 @@ const toNode = (target) => {
     text: target.value,
     children: target.children.map(id => "id" + id),
     state: {
-      opened: nodes["id" + target.id]?.state?.opened ?? false,
+      opened: openedTargetIds.includes(target.id),
     }
   }
 };
@@ -102,19 +107,43 @@ const updateTargets = () => {
     });
 };
 
-const setFilter = (text) => {
-  if (!text) return;
-  return echidna
-    .search(text)
-    .then(({ data: targets }) => {
-      const ids = targets.map(target => target.id);
-      Object.values(nodes).forEach(node => {
-        node.state.opened = ids.includes(node.targetId);
+const loadOpenedTargetIds = () => {
+  openedTargetIds = JSON.parse(localStorage.getItem(STORAGE_OPENED)) || [0];
+};
+
+const saveOpenedTargetIds = () => {
+  localStorage.setItem(STORAGE_OPENED, JSON.stringify(openedTargetIds));
+};
+
+const nodeOpened = (node) => {
+    openedTargetIds.push(node.targetId);
+    saveOpenedTargetIds();
+};
+
+const nodeClosed = (node) => {
+    openedTargetIds = openedTargetIds.filter((id) => id !== node.targetId);
+    saveOpenedTargetIds();
+};
+
+const updateNodeOpened = (targetIds) => {
+  Object.values(nodes.value).forEach(node => {
+    node.state.opened = targetIds.includes(node.targetId);
+  });
+};
+
+const setFilter = (name) => {
+  if (name) {
+    return echidna
+      .search(name)
+      .then(({ data: targets }) => {
+        updateNodeOpenedt(targets.map(target => target.id));
+      })
+      .catch((error) => {
+        console.error(error);
       });
-    })
-    .catch((error) => {
-      console.error(error);
-    });
+  } else {
+    updateNodeOpenedt(openedTargetIds);
+  }
 };
 
 const parentName = (target) => {
