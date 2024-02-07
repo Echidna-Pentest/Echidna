@@ -66,21 +66,13 @@
     }
   };
 
-  const adjustTerminalSize = () => {
-    //const viewWidth = Math.max(document.documentElement.clientWidth, window.innerWidth);
-    //const desiredWidth = Math.max(viewWidth * 0.6, 500);
-    //terminalsDiv.value.style.width = desiredWidth + "px";
-    //terminals.value.fit();
-    //return desiredWidth;
-  };
-
   const showError = (message) => {
     error.value = message;
     setTimeout(() => { error.value = ""; }, 5000);
   };
 
   const onResize = () => {
-    adjustTerminalSize()
+    terminals.value.fit();
   }
 
 </script>
