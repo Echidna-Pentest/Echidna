@@ -23,48 +23,13 @@
     <v-col
       class="ma-n1 pa-0"
     >
-      <v-card
-        class="targettree mr-4"
-        color="yellow-lighten-4"
-        ref="targetsCard"
-        style="height: 50vh; overflow-y: auto;"
-        scrollable
-        outlined
-      >
-        <v-card-title>
-          <div
-            class="d-flex flex-row align-center"
-          >
-            Targets:
-            <TargetSearch
-              @search="searchTarget"
-            />
-            <TargetExport />
-          </div>
-        </v-card-title>
-        <v-card-text>
-          <TargetTree
-            ref="targetTree"
-            @selected="selectedTarget"
-          />
-        </v-card-text>
-      </v-card>
-      <v-card
-        title="Candidate commands:"
-        class="candidatecommand mr-4"
+      <TargetsCard
+        @selected="(target) => candidatesCard.setTarget(target.id)"
+      />
+      <CandidatesCard
         ref="candidatesCard"
-        color="green-lighten-4"
-        style="height: 50vh; overflow-y: auto;"
-        scrollable
-        outlined
-      >
-        <v-card-text >
-          <Candidates
-            ref="candidates"
-            @selected="executeCommand"
-          />
-        </v-card-text>
-      </v-card>
+        @selected="executeCommand"
+      />
     </v-col>
   </v-row>
   <LogArchive />
@@ -73,10 +38,8 @@
 
 <script setup>
   import TabTerminals from '@/components/TabTerminals.vue';
-  import TargetSearch from '@/components/TargetSearch.vue'
-  import TargetExport from '@/components/TargetExport.vue'
-  import TargetTree from '@/components/TargetTree.vue'
-  import Candidates from '@/components/Candidates.vue'
+  import TargetsCard from '@/components/TargetsCard.vue'
+  import CandidatesCard from '@/components/CandidatesCard.vue'
   import LogArchive from '@/components/LogArchive.vue'
   import ChatBot from '@/components/ChatBot.vue'
   import { ref } from 'vue';
@@ -84,19 +47,12 @@
   const terminalsDiv = ref();
   const terminals = ref();
   const targetsCard = ref();
-  const targetTree = ref();
   const candidatesCard = ref();
-  const candidates = ref();
   const error = ref('');
 
   const terminalSelected = (terminal) => {
     document.title = terminal.name + ' - Echidna';
-  };
-
-  const searchTarget = (text) => targetTree.value.setFilter(text);
-
-  const selectedTarget = (target) => {
-    candidates.value.setTarget(target.id);
+    candidatesCard.value.setTerminal(terminal.id);
   };
 
   const executeCommand = (command) => {
