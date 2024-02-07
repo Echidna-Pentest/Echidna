@@ -1,82 +1,74 @@
 <template>
-  <div
+  <v-row
+    class="mr-auto ma-n2 pa-0"
+    style="min-width: 500px; max-height: 980px;"
     v-resize="onResize"
+    no-gutters
   >
-    <v-row
-      class="mr-auto ma-n2 pa-0"
-      no-gutters
+    <v-col
+      class="ma-n1 pa-0"
     >
-      <v-col
-        class="ma-n1 pa-0"
-        style="min-width: 500px; max-height: 980px;"
+      <div
+        ref="terminalsDiv"
+        id="terminals"
       >
-        <div
-          ref="terminalsDiv"
-          id="terminals"
-        >
-          <div style="color: red;">{{ error }}</div>
-          <TabTerminals
-            ref="terminals"
-            @selected="terminalSelected"
-            @error="showError"
-          />
-        </div>
-      </v-col>
-      <v-col
-        style="min-width: 500px; max-height: 980px;"
+        <div style="color: red;">{{ error }}</div>
+        <TabTerminals
+          ref="terminals"
+          @selected="terminalSelected"
+          @error="showError"
+        />
+      </div>
+    </v-col>
+    <v-col
+      class="ma-n1 pa-0"
+    >
+      <v-card
+        class="targettree mr-4"
+        color="yellow-lighten-4"
+        ref="targetsCard"
+        style="height: 50vh; overflow-y: auto;"
+        scrollable
+        outlined
       >
-        <v-card
-          class="targettree"
-          color="yellow-lighten-4"
-          ref="targetsCard"
-          style="height: 60vh"
-          scrollable
-          outlined
-        >
-          <v-card-title>
-            <div
-              class="d-flex flex-row align-center"
-            >
-              Targets:
-              <TargetSearch
-                @search="searchTarget"
-              />
-              <TargetExport />
-            </div>
-          </v-card-title>
-          <v-card-text>
-            <TargetTree
-              ref="targetTree"
-              @selected="selectedTarget"
-              style="height: 45vh; overflow-y: auto;"
+        <v-card-title>
+          <div
+            class="d-flex flex-row align-center"
+          >
+            Targets:
+            <TargetSearch
+              @search="searchTarget"
             />
-          </v-card-text>
-        </v-card>
-        <v-card
-          title="Candidate commands:"
-          class="candidatecommand"
-          ref="candidatesCard"
-          color="green-lighten-4"
-          style="height: 40%"
-          scrollable
-          outlined
-        >
-          <v-card-text >
-            <div
-              style="height: 30vh; overflow-y: auto;"
-            >
-              <Candidates
-                ref="candidates"
-                @selected="executeCommand"
-              />
-            </div>
-          </v-card-text>
-        </v-card>
-      </v-col>
-    </v-row>
-    <LogArchive />
-    <ChatBot />
-  </div>
+            <TargetExport />
+          </div>
+        </v-card-title>
+        <v-card-text>
+          <TargetTree
+            ref="targetTree"
+            @selected="selectedTarget"
+          />
+        </v-card-text>
+      </v-card>
+      <v-card
+        title="Candidate commands:"
+        class="candidatecommand mr-4"
+        ref="candidatesCard"
+        color="green-lighten-4"
+        style="height: 50vh; overflow-y: auto;"
+        scrollable
+        outlined
+      >
+        <v-card-text >
+          <Candidates
+            ref="candidates"
+            @selected="executeCommand"
+          />
+        </v-card-text>
+      </v-card>
+    </v-col>
+  </v-row>
+  <LogArchive />
+  <ChatBot />
 </template>
 
 <script setup>
@@ -126,16 +118,6 @@
     //return desiredWidth;
   };
 
-  const adjustTargetTreeSize = (terminalWidth) => {
-    //const wtargetsTop = targettreeCard.$el.clientTop;
-    //const width = window.innerWidth - terminalWidth - 10;
-    //const height = (window.innerHeight - wtargetsTop) / 2 - 10;
-    //targetsCard.$el.style.width = `${width}px`;
-    //candidatesCard.$el.style.width = `${width}px`;
-    //targetsCard.$el.style.height = `${height}px`;
-    //candidatesCard.$el.style.height = `${height}px`;
-  };
-
   const showError = (message) => {
     error.value = message;
     setTimeout(() => { error.value = ""; }, 5000);
@@ -143,7 +125,6 @@
 
   const onResize = () => {
     adjustTerminalSize()
-    adjustTargetTreeSize();
   }
 
 </script>
