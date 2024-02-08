@@ -9,7 +9,6 @@
       class="ma-n1 pa-0"
     >
       <div
-        ref="terminalsDiv"
         id="terminals"
       >
         <div style="color: red;">{{ error }}</div>
@@ -48,9 +47,7 @@
   import ChatBot from '@/components/ChatBot.vue'
   import { ref } from 'vue';
 
-  const terminalsDiv = ref();
   const terminals = ref();
-  const targetsCard = ref();
   const candidatesCard = ref();
   const error = ref('');
 
