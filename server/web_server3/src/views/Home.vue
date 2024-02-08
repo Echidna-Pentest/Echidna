@@ -24,9 +24,13 @@
       class="ma-n1 pa-0"
     >
       <TargetsCard
+        style="height: 50vh; overflow-y: auto;"
+        color="yellow-lighten-4"
         @selected="(target) => candidatesCard.setTarget(target.id)"
       />
       <CandidatesCard
+        style="height: 50vh; overflow-y: auto;"
+        color="green-lighten-4"
         ref="candidatesCard"
         @selected="executeCommand"
       />

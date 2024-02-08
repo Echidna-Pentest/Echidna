@@ -1,8 +1,6 @@
 <template>
   <v-card
     class="targettree mr-4"
-    color="yellow-lighten-4"
-    style="height: 50vh; overflow-y: auto;"
     scrollable
     outlined
   >

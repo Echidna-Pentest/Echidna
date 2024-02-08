@@ -2,8 +2,6 @@
   <v-card
     title="Candidate commands:"
     class="candidatecommand mr-4"
-    color="green-lighten-4"
-    style="height: 50vh; overflow-y: auto;"
     scrollable
     outlined
   >
