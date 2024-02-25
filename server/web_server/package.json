@@ -8,7 +8,7 @@
     "lint": "vue-cli-service lint"
   },
   "dependencies": {
-    "@babel/runtime": "^7.19.0",
+    "@babel/runtime": "^7.23.9",
     "@echidna/api": "file:../../lib",
     "autoprefixer": "^10.4.14",
     "core-js": "^3.25.1",
@@ -26,7 +26,7 @@
     "xterm-addon-fit": "^0.5.0"
   },
   "devDependencies": {
-    "@babel/plugin-transform-runtime": "^7.19.0",
+    "@babel/plugin-transform-runtime": "^7.23.9",
     "@vue/cli-plugin-babel": "~5.0.8",
     "@vue/cli-plugin-eslint": "~5.0.8",
     "@vue/cli-service": "~5.0.8",
