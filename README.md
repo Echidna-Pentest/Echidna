@@ -31,7 +31,7 @@ There are two ways to start the servers.
 - Start the servers on your Kali Linux system.
 - Start the servers in docker containers on your Linux system.
 
-Execute "sh ./install.sh", or execute the commands below to install manually. 
+Execute "sh ./install.sh", or execute the commands below to install manually.
 
 ### Install Node.js
 
@@ -40,7 +40,7 @@ $ sudo apt-get -y update
 $ sudo apt-get -y dist-upgrade
 $ sudo apt-get -y install kali-linux-headless nodejs npm
 $ sudo npm install -g n
-$ sudo n node/16.17.0
+$ sudo n node/18.19.1
 $ sudo apt-get -y purge nodejs npm
 $ sudo apt-get -y autoremove
 $ sudo apt-get clean
@@ -90,7 +90,7 @@ REPOSITORY               TAG       IMAGE ID       CREATED          SIZE
 echidna_web              latest    70c2aab7c813   17 seconds ago   633MB
 echidna_api              latest    f55f2b69ba81   2 minutes ago    8.76GB
 kalilinux/kali-rolling   latest    5eb4e474175c   3 weeks ago      121MB
-node                     16-slim   572389d8c38d   4 weeks ago      179MB
+node                     18-slim   572389d8c38d   4 weeks ago      179MB
 ```
 
 ### How to use Echidna
@@ -107,7 +107,7 @@ Once you have successfully accessed Echidna from the web, use one of the command
 - nmap target_ip
 - ip -4 neigh (if the target ip address is already added to ARP table)
 
-Once the target information has been added to the tree, select that target from the target tree. 
+Once the target information has been added to the tree, select that target from the target tree.
 Depending on which ports are open, the commands to be executed next will be displayed in the Candidate Command component, so click on them.
 The command displayed in the Candidatre Command component changes depending on the target selection, such as selecting the IP address of the host, selecting port 21, selecting port 80, etc, so please select various target nodes at first.
 
@@ -119,7 +119,7 @@ https://www.youtube.com/@Echidna0801
 <!--
 ### CLI command access
 
-You need to install node version 16
+You need to install node version 18
 
 ```console
 $ cd echidna/client/cli
@@ -165,14 +165,14 @@ Parser scripts for the below commands are implemented currently.
 
 
 ### Command Suggest
-Suggest candidate commands based on the selected target tree node or current situation. 
+Suggest candidate commands based on the selected target tree node or current situation.
 
 Example)
 - http (port 80) service added and selected in Target tree - > show HTTP scan commands (nikto, wpscan, dirb, sqlmap, etc) in the Candidate Command component.
 - Vulnerable services like vsftpd 2.3.4 added and selected in Target tree -> show exploit command for vsftpd 2.3.4.
 - Reverse shell is established with target terminal - > show commands for privilege escalation (find, netstat, uname, etc)
 
-Adding the below format in commands.txt is required to display them in the Candidate Command component. 
+Adding the below format in commands.txt is required to display them in the Candidate Command component.
 The items (host, ipv4) enclosed in "{}" in the template are automatically replaced with the target information registered in the target tree.
 The condition item is set according to the desired conditions to display in the candidate command. In the example below, since the whatweb command is used for investigating web services, we define the condition item as "http" and "80".
 
@@ -192,7 +192,7 @@ group: HTTP
 
 
 Currently, approximately 100 commands are registered.
-Ex) 
+Ex)
 - Scan commands (commands to use before initial shell)
 
 whatweb, smbclient, smtp_version enum command, enum command for rpc, etc
@@ -225,19 +225,19 @@ Export the contents of the Target Tree to md file by clicking the export button 
 ### Chat
 Share text messages with others by clicking the Chat button at the bottom right of the home window.
 If you add @AI at the top, ChatGPT analyzes the message to see some vulnerabilities.
-Analysis results are returned through the chat component. 
+Analysis results are returned through the chat component.
 
 <img src="img/chat.png" width="40%">
 
 
-### Exploit code search 
-When a "Version" node is registered in the Target Tree, Exploit codes are automatically searched and added to the Target Tree. 
+### Exploit code search
+When a "Version" node is registered in the Target Tree, Exploit codes are automatically searched and added to the Target Tree.
 In the figure below, the vulnerable version of vsftpd 2.3.4 was registered in the target tree. Therefore, Echidna automatically searched for the exploit codes and registered the exploit codes in the target tree.
 
 <img src="img/exploitSearch.png" width="50%">
 
 
-### Graph 
+### Graph
 You can view the target tree graphically by clicking the Graph button in the navigation bar
 
 <img src="img/graph.png" width="50%">
@@ -281,7 +281,7 @@ The terminal size is calculated based on the window size when you click the term
 
 ### Incompatible Commands
 
-Echidna is not compatible with commands like dirb, which generate a large amount of output to display progress in the terminal because Echidna saves all terminal outputs in a log file. 
+Echidna is not compatible with commands like dirb, which generate a large amount of output to display progress in the terminal because Echidna saves all terminal outputs in a log file.
 Please use the silent option (-S) to use dirb command in Echidna.
 
 
