@@ -10,9 +10,9 @@
   },
   "dependencies": {
     "@echidna/api": "file:../../lib",
-    "@kyvg/vue3-notification": "^3.1.4",
+    "@kyvg/vue3-notification": "^3.2.1",
     "@mdi/font": "7.4.47",
-    "core-js": "^3.35.1",
+    "core-js": "^3.36.1",
     "pinia": "^2.1.7",
     "roboto-fontface": "*",
     "vis-data": "^7.1.9",
@@ -21,17 +21,17 @@
     "vue": "^3.4.15",
     "vue-router": "^4.2.5",
     "vue3-treeview": "^0.4.2",
-    "vuetify": "^3.5.2",
+    "vuetify": "^3.5.13",
     "xterm": "^5.3.0",
     "xterm-addon-fit": "^0.8.0"
   },
   "devDependencies": {
-    "@vitejs/plugin-vue": "^4.6.2",
+    "@vitejs/plugin-vue": "^5.0.4",
     "eslint": "^8.56.0",
     "eslint-plugin-vue": "^9.21.1",
     "sass": "^1.70.0",
     "unplugin-fonts": "^1.1.1",
-    "vite": "^4.5.1",
-    "vite-plugin-vuetify": "^1.0.2"
+    "vite": "^5.0.0",
+    "vite-plugin-vuetify": "^2.0.3"
   }
 }
