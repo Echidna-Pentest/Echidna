@@ -136,13 +136,13 @@ const setFilter = (name) => {
     return echidna
       .search(name)
       .then(({ data: targets }) => {
-        updateNodeOpenedt(targets.map(target => target.id));
+        updateNodeOpened(targets.map(target => target.id));
       })
       .catch((error) => {
         console.error(error);
       });
   } else {
-    updateNodeOpenedt(openedTargetIds);
+    updateNodeOpened(openedTargetIds);
   }
 };
 

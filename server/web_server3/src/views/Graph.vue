@@ -1,12 +1,12 @@
 <template>
-  <v-container>
+  <div>
     <GraphNetwork
       @selected="(targetId) => dialog.show(targetId)"
     />
     <GraphDialog
        ref="dialog"
     />
-  </v-container>
+  </div>
 </template>
 
 <script setup>

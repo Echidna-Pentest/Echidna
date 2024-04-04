@@ -1,16 +1,17 @@
 <template>
   <div 
     @paste="handlePaste"
+    v-resize="adjustHeight"
   >
-    <v-card
+    <v-sheet
       class="mr-auto"
       variant="outlined"
     >
       <div
+        ref="terminalDiv"
         id="terminal"
-        style="height: 900px"
       />
-    </v-card>
+    </v-sheet>
   </div>
 </template>
 
@@ -18,9 +19,10 @@
 import "xterm/css/xterm.css";
 import { Terminal } from "xterm";
 import { FitAddon } from "xterm-addon-fit";
-import { onMounted, inject } from "vue";
+import { ref, onMounted, inject } from "vue";
 
 const { id = 1 } = defineProps(["id"]);
+const terminalDiv = ref();
 const emits = defineEmits(["name"]);
 
 const echidna = inject("$echidna");
@@ -56,21 +58,15 @@ onMounted(() => {
   return selectTerminal(id);
 });
 
-const fit = () => {
-  fitAddon.fit();
-};
-
 const adjustHeight = () => {
-  let div = document.getElementById('terminal');
-  let rect = div.getBoundingClientRect();
-  let viewHeight = Math.max(document.documentElement.clientHeight, window.innerHeight);
-  let remainingHeight = viewHeight - rect.top -10;
-  div.style.height = remainingHeight + "px";
+  const rect = terminalDiv.value.getBoundingClientRect();
+  const viewHeight = Math.max(document.documentElement.clientHeight, window.innerHeight);
+  console.debug("height:", document.documentElement.clientHeight, window.innerHeight);
+  terminalDiv.value.style.height = (viewHeight - rect.top) + "px";
   fitAddon.fit();
 };
 
 const handlePaste = (event) => {
-  console.debug("handlePaste");
   const text = event.clipboardData.getData("Text");    
   return echidna
     .keyin(terminalId, text, targetId)
@@ -79,16 +75,14 @@ const handlePaste = (event) => {
 
 const selectTerminal = (id) => {
   //console.debug("Terminal.selectTerminal:", id);
-  adjustHeight();
   terminal.reset();
   terminalId = id;
   updateTerminal();
   lastLogId = -1;
   if (id <= 0) return;
   updateLog();
-  const cols = terminal.cols;
-  const rows = terminal.rows;
-  return echidna.resizeTerminal(id, cols, rows);
+  adjustHeight();
+  return echidna.resizeTerminal(id, terminal.cols, terminal.rows);
 };
 
 const executeCommand = (command, appendNewLine=false) => {
@@ -148,7 +142,7 @@ const logsEventListener = (event) => {
 };
 
 defineExpose({
-  fit,
+  adjustHeight,
   selectTerminal,
   executeCommand,
 });

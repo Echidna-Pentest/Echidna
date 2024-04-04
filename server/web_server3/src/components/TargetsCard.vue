@@ -1,6 +1,6 @@
 <template>
   <v-card
-    class="targettree mr-4"
+    class="targettree"
     scrollable
     outlined
   >

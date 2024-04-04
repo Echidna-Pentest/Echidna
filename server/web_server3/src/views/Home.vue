@@ -1,38 +1,34 @@
 <template>
   <v-row
-    class="mr-auto ma-n2 pa-0"
-    style="min-width: 500px; max-height: 980px;"
-    v-resize="onResize"
     no-gutters
   >
     <v-col
-      class="ma-n1 pa-0"
+      ref="terminalCol"
+      cols="12" md="7" lg="7" xl="7"
     >
-      <div
-        id="terminals"
-      >
-        <div style="color: red;">{{ error }}</div>
-        <TabTerminals
-          ref="terminals"
-          @selected="terminalSelected"
-          @error="showError"
-        />
-      </div>
+      <div style="color: red;">{{ error }}</div>
+      <TabTerminals
+        ref="terminals"
+        @selected="terminalSelected"
+        @error="showError"
+      />
     </v-col>
     <v-col
-      class="ma-n1 pa-0"
+      cols="12" md="5" lg="5" xl="5"
     >
-      <TargetsCard
-        style="height: 50vh; overflow-y: auto;"
-        color="yellow-lighten-4"
-        @selected="(target) => candidatesCard.setTarget(target.id)"
-      />
-      <CandidatesCard
-        style="height: 50vh; overflow-y: auto;"
-        color="green-lighten-4"
-        ref="candidatesCard"
-        @selected="executeCommand"
-      />
+     <TargetsCard
+       class="mr-1"
+       color="yellow-lighten-4"
+       style="height: 50vh; overflow-y: auto;"
+       @selected="(target) => candidatesCard.setTarget(target.id)"
+     />
+     <CandidatesCard
+       ref="candidatesCard"
+       class="mr-1"
+       color="green-lighten-4"
+       style="height: 50vh; overflow-y: auto;"
+       @selected="executeCommand"
+     />
     </v-col>
   </v-row>
   <LogArchive />
@@ -48,6 +44,7 @@
   import { ref } from 'vue';
 
   const terminals = ref();
+  const terminalCol = ref();
   const candidatesCard = ref();
   const error = ref('');
 
@@ -71,9 +68,5 @@
     error.value = message;
     setTimeout(() => { error.value = ""; }, 5000);
   };
-
-  const onResize = () => {
-    terminals.value.fit();
-  }
 
 </script>

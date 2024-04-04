@@ -1,5 +1,5 @@
 <template>
-  <v-container>
+  <div>
     <!--    <TerminalsTab @selected="selected"></TerminalsTab>-->
     <TerminalsTabPlus
       @selected="selected"
@@ -8,7 +8,7 @@
     <Terminal
       ref="terminal"
     />
-  </v-container>
+  </div>
 </template>
 
 <script setup>
@@ -28,16 +28,11 @@ const executeCommand = (command, appendNewline=false) => {
   terminal.value.executeCommand(command, appendNewline);
 };
 
-const fit = () => {
-  terminal.value.fit();
-};
-
 const showError = (message) => {
   emits('error', message);
 };
 
 defineExpose({
   executeCommand,
-  fit,
 });
 </script>

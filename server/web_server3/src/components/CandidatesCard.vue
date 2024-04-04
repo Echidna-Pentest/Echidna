@@ -1,7 +1,7 @@
 <template>
   <v-card
     title="Candidate commands:"
-    class="candidatecommand mr-4"
+    class="candidatecommand"
     scrollable
     outlined
   >

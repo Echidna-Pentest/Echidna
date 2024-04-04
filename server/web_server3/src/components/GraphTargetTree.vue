@@ -10,12 +10,7 @@
 <script setup>
   import 'vue3-treeview/dist/style.css';
   import Tree from 'vue3-treeview';
-  import TargetAddDialog from '@/components/TargetAddDialog.vue';
-  import TargetDeleteDialog from '@/components/TargetDeleteDialog.vue';
   import { ref, reactive, onMounted, inject } from 'vue';
-
-  const addDialog = ref();
-  const deleteDialog = ref();
 
   const echidna = inject('$echidna');
 
