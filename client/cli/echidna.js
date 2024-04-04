@@ -4,9 +4,11 @@ const Command = require('commander').Command;
 const fs = require('fs');
 const config = require('./echidna.json');
 const WebSocketClient = require('websocket').client;
-const EchidnaAPI = require('@echidna/api').EchidnaAPI;
+const echidnaapi = import('@echidna/api');
+let EchidnaAPI;
 
-function main() {
+async function main() {
+    EchidnaAPI = (await echidnaapi).EchidnaAPI;
     const args = new Command();
     args.name(`echidna`)
         .description('A client of the red team tools Echidna')
