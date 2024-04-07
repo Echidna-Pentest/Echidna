@@ -19,14 +19,14 @@
      <TargetsCard
        class="mr-1"
        color="yellow-lighten-4"
-       style="height: 50vh; overflow-y: auto;"
+       style="height: calc(50vh - 16px); overflow-y: auto;"
        @selected="(target) => candidatesCard.setTarget(target.id)"
      />
      <CandidatesCard
        ref="candidatesCard"
        class="mr-1"
        color="green-lighten-4"
-       style="height: 50vh; overflow-y: auto;"
+       style="height: calc(50vh - 16px); overflow-y: auto;"
        @selected="executeCommand"
      />
     </v-col>

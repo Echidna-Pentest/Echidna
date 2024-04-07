@@ -5,6 +5,7 @@
   >
     <v-sheet
       class="mr-auto"
+      color="black"
       variant="outlined"
     >
       <div
