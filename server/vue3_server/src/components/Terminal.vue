@@ -54,14 +54,12 @@ onMounted(() => {
       .catch((error) => console.error("Terminal.onMount:", error));
   });
   echidna.on("logs", logsEventListener);
-  // echidna.on("terminals", updateTerminal);
   return selectTerminal(id);
 });
 
 const adjustHeight = () => {
   const rect = terminalDiv.value.getBoundingClientRect();
   const viewHeight = Math.max(document.documentElement.clientHeight, window.innerHeight);
-  console.debug("height:", document.documentElement.clientHeight, window.innerHeight);
   terminalDiv.value.style.height = (viewHeight - rect.top) + "px";
   fitAddon.fit();
 };
@@ -74,7 +72,6 @@ const handlePaste = (event) => {
 };
 
 const selectTerminal = (id) => {
-  //console.debug("Terminal.selectTerminal:", id);
   terminal.reset();
   terminalId = id;
   updateTerminal();

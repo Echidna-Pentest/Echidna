@@ -33,7 +33,6 @@
   const addTerminal = () => {
     return echidna.addTerminal(name.value)
       .then(({ data: id }) => {
-        console.debug(`terminal id is ${id}.`);
         name.value = '';
       })
       .catch((error) => {
