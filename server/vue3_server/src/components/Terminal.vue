@@ -16,9 +16,9 @@
 </template>
 
 <script setup>
-import "xterm/css/xterm.css";
-import { Terminal } from "xterm";
-import { FitAddon } from "xterm-addon-fit";
+import "@xterm/xterm/css/xterm.css";
+import { Terminal } from "@xterm/xterm";
+import { FitAddon } from "@xterm/addon-fit";
 import { ref, onMounted, inject } from "vue";
 
 const { id = 1 } = defineProps(["id"]);

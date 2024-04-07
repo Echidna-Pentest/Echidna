@@ -33,8 +33,8 @@
 </template>
 
 <script>
-import 'xterm/css/xterm.css';
-import { Terminal } from 'xterm';
+import '@xterm/xterm/css/xterm.css';
+import { Terminal } from '@xterm/xterm';
 import { EchidnaAPI } from '@echidna/api';
 const echidna = new EchidnaAPI(location.hostname);
 export default {

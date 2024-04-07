@@ -20,9 +20,9 @@
 </template>
 
 <script>
-import 'xterm/css/xterm.css';
-import { Terminal } from 'xterm';
-import { FitAddon } from 'xterm-addon-fit';
+import '@xterm/xterm/css/xterm.css';
+import { Terminal } from '@xterm/xterm';
+import { FitAddon } from '@xterm/addon-fit';
 import { EchidnaAPI } from '@echidna/api';
 const echidna = new EchidnaAPI(location.hostname);
 const fitAddon = new FitAddon();

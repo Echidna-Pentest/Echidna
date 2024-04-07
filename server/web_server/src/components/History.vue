@@ -19,9 +19,9 @@
 <script>
 import TerminalsTab from '@/components/TerminalsTab.vue';
 import HistoryCommands from '@/components/HistoryCommands.vue';
-import 'xterm/css/xterm.css';
-import { Terminal } from 'xterm';
-import { FitAddon } from 'xterm-addon-fit';
+import '@xterm/xterm/css/xterm.css';
+import { Terminal } from '@xterm/xterm';
+import { FitAddon } from '@xterm/addon-fit';
 export default {
   name: 'History',
   components: {
