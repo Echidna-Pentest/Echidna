@@ -11,8 +11,7 @@
       >
         <v-card
           title="Child Nodes"
-          max-height="95vh"
-          class="overflow-y-auto"
+          style="height: 95vh; overflow-y: auto;"
           color="yellow-lighten-4"
         >
           <v-card-text>
@@ -38,8 +37,8 @@
             <CandidatesCard
               ref="graphcandidate"
               title="Candidate Command"
-              class="candidatecommand overflow-y-auto"
-              max-height="30vh"
+              class="candidatecommand"
+              style="height: 30vh; overflow-y: auto;"
               color="green-lighten-4"
               @selected="selectedCommand"
               scrollable
@@ -51,10 +50,11 @@
             v-show="showTerminal"
             id="terminalDialog"
           >
-            <v-card>
+            <v-card
+              style="height: 65vh;"
+            >
               <Terminal
                 ref="terminal"
-                style="height: 65vh;"
               />
             </v-card>
           </v-col>
@@ -66,9 +66,7 @@
 
 <script setup>
   import GraphTargetTree from "@/components/GraphTargetTree.vue";
-  //import GraphCandidate from '@/components/GraphCandidate.vue';
   import CandidatesCard from "@/components/CandidatesCard.vue";
-  //import GraphTerminal from '@/components/GraphTerminal.vue';
   import Terminal from '@/components/Terminal.vue';
   import { ref } from 'vue';
   
@@ -99,8 +97,10 @@
 
   const selectedCommand = (command) => {
     showTerminal.value = true;
-    terminal.value.selectTerminal(terminalId);
-    terminal.value.executeCommand(command, true);
+    setTimeout(() => {  // delay is needed to determine component size after show
+      terminal.value.selectTerminal(terminalId);
+      terminal.value.executeCommand(command, true);
+    }, 300);
   };
 
   defineExpose({
@@ -112,14 +112,5 @@
 <style>
 .v-dialog {
   overflow-y: hidden;
-}
-
-.custom-dialog .v-dialog__content {
-  width: 50% !important;
-  max-width: 50% !important;
-  left: 0 !important;
-  position: fixed !important;
-  top: 0 !important;
-  bottom: 0 !important;
 }
 </style>

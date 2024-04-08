@@ -63,6 +63,7 @@ const adjustHeight = () => {
   const viewHeight = Math.max(document.documentElement.clientHeight, window.innerHeight);
   terminalDiv.value.style.height = (viewHeight - rect.top) + "px";
   fitAddon.fit();
+  return echidna.resizeTerminal(id, terminal.cols, terminal.rows);
 };
 
 const handlePaste = (event) => {
@@ -79,8 +80,7 @@ const selectTerminal = (id) => {
   lastLogId = -1;
   if (id <= 0) return;
   updateLog();
-  adjustHeight();
-  return echidna.resizeTerminal(id, terminal.cols, terminal.rows);
+  return adjustHeight();
 };
 
 const executeCommand = (command, appendNewLine=false) => {
