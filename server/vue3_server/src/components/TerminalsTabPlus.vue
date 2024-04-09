@@ -114,13 +114,10 @@
   const hideTerminal = (terminal) => {
     //        document.getElementById('terminal'+terminal.id).remove();
     if (terminals.value.length <= 1){
-      console.debug("Can't hide last terminal");
+      emits('error', "Can't hide last terminal");
       return;
     }
     return echidna.hideTerminal(terminal.id)
-      .then(() => {
-        console.debug("hideTerminal done");
-      })
       .catch((error) => {
         console.log(error);
       });
