@@ -18,6 +18,7 @@
         <v-text-field
           class="v-text-field"
           :model-value="terminal.name"
+          :size="terminal.name.length"
           hide-details
           maxlength="15"
           variant="solo"
