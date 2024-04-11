@@ -20,16 +20,16 @@ bun install
 
 ```
 # yarn
-yarn dev
+yarn serve
 
 # npm
-npm run dev
+npm run serve
 
 # pnpm
-pnpm dev
+pnpm serve
 
 # bun
-bun run dev
+bun run serve
 ```
 
 ### Compiles and minifies for production
