@@ -31,6 +31,9 @@
   };
 
   const drawNetwork = (targets) => {
+    if (!container.value) {
+        return;
+    }
     const rootIds = targets
       .filter((node) => node.value === "host" || node.parent === -1)
       .map((node) => node.id);
