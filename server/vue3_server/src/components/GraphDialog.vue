@@ -1,6 +1,6 @@
 <template>
   <v-dialog
-    v-model="dialog"
+    v-model="showDialog"
   >
     <v-row
       no-gutters
@@ -74,7 +74,7 @@
   const graphcandidate = ref();
   const terminal = ref();
 
-  const dialog = ref(false);
+  const showDialog = ref(false);
   const showCommand = ref(false);
   const showTerminal = ref(false);
 
@@ -82,7 +82,7 @@
 
   const show = (targetId) => {
     if (targetId == undefined) return;
-    dialog.value = true;
+    showDialog.value = true;
     showCommand.value = false;
     showTerminal.value = false;
     setTimeout(() => {
