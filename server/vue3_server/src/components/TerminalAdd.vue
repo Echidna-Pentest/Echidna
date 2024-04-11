@@ -32,7 +32,7 @@
   const name = ref('');
   const addTerminal = () => {
     return echidna.addTerminal(name.value)
-      .then(({ data: id }) => {
+      .then(() => {
         name.value = '';
       })
       .catch((error) => {
