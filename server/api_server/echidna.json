@@ -1,4 +1,11 @@
 {
     "AIAnalysis": false,
-    "apiKey": "replace with your API key"
+    "openaiEnabled": false,
+    "localEnabled": false,
+    "geminiEnabled": false,
+    "apiKey": "openAIAPIKey",
+    "localBaseUrl": "http://172.20.10.2:1234/v1",
+    "model": "gpt-4o-mini",
+    "geminiApiKey": "geminiApiKey",
+    "geminiModel": "gemini-2.0-flash"
 }

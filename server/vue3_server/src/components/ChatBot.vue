@@ -188,6 +188,28 @@ export default {
   border-radius: 5px;
 }
 
+/* provider-colored authors */
+.local-llm {
+  padding: 5px;
+  margin: 5px;
+  background-color: rgba(255, 255, 128, .5);
+  border-radius: 5px;
+}
+
+.openai {
+  padding: 5px;
+  margin: 5px;
+  background-color: rgba(208, 128, 255, 0.35);
+  border-radius: 5px;
+}
+
+.gemini {
+  padding: 5px;
+  margin: 5px;
+  background-color: rgba(128, 255, 128, 0.45);
+  border-radius: 5px;
+}
+
 
 .chat-input {
   display: flex;

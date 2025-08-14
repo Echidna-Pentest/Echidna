@@ -140,6 +140,7 @@ class Shell {
         this.alive = true;
         this.process.write('PS1=' + promptname + '\n');
         this.terminalOutput = "";     // store terminal output to call filtering process
+        this.lastAnalyzedExecNo = -1;  // guard to analyze once per command
         const transformStream = new stream.Transform({
           highWaterMark: 16384 * 16384,
           transform: (chunk, encoding, callback) => {
@@ -220,6 +221,16 @@ class Shell {
                 filter.extract(output);
               }
             });
+            // trigger AI analysis once per command when prompt appears
+            const endPattern = /\r?\n?[^\r\n]*\$\s*$/;
+            if (endPattern.test(output) && this.lastAnalyzedExecNo !== this.execNo) {
+              const analyzedText = this.terminalOutput.replace(/\r?\n?[^\r\n]*\$\s*$/, "\n");
+              try {
+                const p = chats.analysis(analyzedText, false);
+
+              } catch (e) { /* noop */ }
+              this.lastAnalyzedExecNo = this.execNo;
+            }
             logs.create(this.id, this.execNo, ++this.logSeqNo, this.command, status, output, new Date());
             const result = criticalscandb.searchValue("CriticalScan", output);
             if (result){

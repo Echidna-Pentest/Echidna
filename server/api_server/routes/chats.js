@@ -44,68 +44,131 @@ class Chats {
   }
 }
 
-async function checkApiKey() {
+// system prompt used by all providers
+const SYSTEM_PROMPT = "You are a penetration test assistant. Analyze the provided string for security risks, vulnerabilities, or potential for exploitation. For a 'HIGH RISK' finding, reply with 'HIGH RISK: ' plus briefly state the risk and necessary steps for exploitation. For 'LOW RISK' or 'NONE', just simply reply with the category ('LOW RISK' or 'NONE') only.";
+
+function postChat(author, data) {
   try {
-    const response = await axios.get("https://api.openai.com/v1/engines", {
-      headers: {
-        "Authorization": `Bearer ${config.apiKey}`
-      }
-    });
-    return true; // You might want to add further checks on the 'response'.
-  } catch (error) {
-    console.error("Error checking API key:", error.message);
-    return false;
-  }
+    if (typeof data === 'string' && data.indexOf('HIGH RISK') !== -1) {
+      create("text", author, data);
+    }
+  } catch (e) {}
 }
 
-async function getAiResponse(topic) {
-  if (!await checkApiKey()) {
-    console.error("Invalid API Key");
-    create("text", "chatbot", "Invalid API Key");
-    return;
-  }
-
-  const openai = new OpenAIClient({ apiKey: config.apiKey });
-
-/*  const messages = [
-    { role: "system", content: "You are a penetration test assistant. Please find the vulnerability or exploit code or attack vector\n" },
-    { role: "user", content: topic }
-  ];*/
-
+async function analyzeWithOpenAI(topic) {
+  const apiKey = process.env.OPENAI_API_KEY || config.apiKey;
+  if (!apiKey) return "";
+  const client = new OpenAIClient({ apiKey });
   const messages = [
-    { role: "system", content: "You are a penetration test assistant. Analyze the provided string for security risks, vulnerabilities, or potential for exploitation. For a 'HIGH RISK' finding, reply with 'HIGH RISK: ' plus briefly state the risk and necessary steps for exploitation. For 'LOW RISK' or 'NONE', just simply reply with the category ('LOW RISK' or 'NONE') only.\n" },
+    { role: "system", content: SYSTEM_PROMPT + "\n" },
     { role: "user", content: topic }
   ];
-
   try {
-    const chatCompletion = await openai.chat.completions.create({
-      model: "gpt-4",
-      messages: messages,
+    const resp = await client.chat.completions.create({
+      model: process.env.OPENAI_MODEL || config.openaiModel || config.model || "gpt-4o-mini",
+      messages,
       max_tokens: 250,
       temperature: 0.5,
     });
-
-    if (chatCompletion.choices[0].message.content.indexOf('HIGH RISK')!== -1){
-      create("text", "chatbot", chatCompletion.choices[0].message.content);
-    }else{
-      console.log("NOT HIGH RISK analysis: ", chatCompletion.choices[0].message.content);
-    }
+    const content = resp.choices?.[0]?.message?.content || "";
+    if (content) postChat("openai", content);
+    return content ? `[openai] ${content}` : "";
   } catch (error) {
-    create("text", "chatbot", "Error during AI response retrieval:" + error);
-    console.error("Error during AI response retrieval:", error);
+    const msg = `OpenAI error: ${error}`;
+    return msg;
   }
 }
 
-function analysis(scanresult, isRequestedAnalysis = false) {
-  if (config.AIAnalysis || isRequestedAnalysis) {
-    if (scanresult != null && scanresult != '') {
-      try {
-        getAiResponse(scanresult);
-      } catch (err) {
-        console.error(err.name + ': ' + err.message);
+async function analyzeWithLocal(topic) {
+  const baseURL = process.env.LOCAL_LLM_BASEURL || config.localBaseUrl;
+  if (!baseURL) return "";
+  const apiKey = process.env.OPENAI_API_KEY || 'sk-local';
+  const client = new OpenAIClient({ apiKey, baseURL });
+  const messages = [
+    { role: "system", content: SYSTEM_PROMPT + "\n" },
+    { role: "user", content: topic }
+  ];
+  try {
+    const resp = await client.chat.completions.create({
+      model: process.env.LOCAL_LLM_MODEL || config.localModel || 'auto',
+      messages,
+      max_tokens: 250,
+      temperature: 0.5,
+    });
+    const content = resp.choices?.[0]?.message?.content || "";
+    if (content) postChat("local-llm", content);
+    return content ? `[local] ${content}` : "";
+  } catch (error) {
+    const msg = `Local LLM error: ${error}`;
+    return msg;
+  }
+}
+
+async function analyzeWithGemini(topic) {
+  const key = process.env.GEMINI_API_KEY || config.geminiApiKey;
+  let model = process.env.GEMINI_MODEL || config.geminiModel || 'gemini-1.5-flash';
+  if (!key) return "";
+  const body = {
+    contents: [
+      { role: "user", parts: [{ text: `${SYSTEM_PROMPT}\n\n${topic}` }] }
+    ]
+  };
+  const maxRetries = 3;
+  let attempt = 0;
+  while (attempt < maxRetries) {
+    try {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+      const resp = await axios.post(url, body, {
+        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
+        timeout: 15000,
+      });
+      const parts = resp.data?.candidates?.[0]?.content?.parts || [];
+      const content = parts.map(p => p.text || "").join("") || "";
+      if (content) postChat("gemini", content);
+      return content ? `[gemini] ${content}` : "";
+    } catch (error) {
+      const status = error?.response?.status;
+      const retriable = status >= 500 || status === 429 || error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT' || error.code === 'ECONNRESET';
+      // on first failure, try the '-latest' alias once
+      if (attempt === 0 && !model.endsWith('-latest')) {
+        model = `${model}-latest`;
+      } else if (!retriable) {
+        const msg = `Gemini error: ${error}`;
+        return msg;
       }
+      attempt++;
+      if (attempt >= maxRetries) {
+        const msg = `Gemini error: ${error}`;
+        return msg;
+      }
+      const backoffMs = 500 * Math.pow(2, attempt - 1);
+      await new Promise(r => setTimeout(r, backoffMs));
     }
   }
+  return "";
+}
+
+function providerEnabled(name) {
+  if (name === 'openai') return (process.env.ENABLE_OPENAI?.toLowerCase() === 'true') || (config.openaiEnabled ?? true);
+  if (name === 'local')  return (process.env.ENABLE_LOCAL?.toLowerCase() === 'true')  || (config.localEnabled ?? !!(process.env.LOCAL_LLM_BASEURL || config.localBaseUrl));
+  if (name === 'gemini') return (process.env.ENABLE_GEMINI?.toLowerCase() === 'true') || (config.geminiEnabled ?? false);
+  return false;
+}
+
+function analysis(scanresult, isRequestedAnalysis = false) {
+  if (!(config.AIAnalysis || isRequestedAnalysis)) {
+    return Promise.resolve("");
+  }
+  if (!scanresult) return Promise.resolve("");
+  const tasks = [];
+  if (providerEnabled('openai')) tasks.push(analyzeWithOpenAI(scanresult));
+  if (providerEnabled('local'))  tasks.push(analyzeWithLocal(scanresult));
+  if (providerEnabled('gemini')) tasks.push(analyzeWithGemini(scanresult));
+  if (tasks.length === 0) return Promise.resolve("");
+  return Promise.allSettled(tasks).then(results => {
+    const texts = results.filter(r => r.status === 'fulfilled').map(r => r.value).filter(Boolean);
+    return texts.join("\n");
+  });
 }
 
 function store() {
@@ -154,7 +217,6 @@ function getAllChats() {
   return _chats;
 }
 
-
 /**
  * Notify chats update
  */
@@ -162,7 +224,6 @@ function getAllChats() {
   const message = JSON.stringify({ type: 'chats' });
   notifier.send(message);
 }
-
 
 function router() {
   const router = express.Router();
@@ -202,12 +263,11 @@ function router() {
       }
    });
 
-
   /**
   * REST API routing
   * Routing to shell
   */
-//   shell.route(router);
+ //   shell.route(router);
 
   return router;
 }
