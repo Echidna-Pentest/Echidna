@@ -5,6 +5,7 @@ const axios = require('axios');
 const config = require('../echidna.json');
 const { Configuration, OpenAIApi } = require("openai");
 const OpenAIClient = require('openai'); 
+const commands = require('routes/commands');
 
 /**
 * @type {string}
@@ -44,15 +45,65 @@ class Chats {
   }
 }
 
-// system prompt used by all providers
-const SYSTEM_PROMPT = "You are a penetration test assistant. Analyze the provided string for security risks, vulnerabilities, or potential for exploitation. For a 'HIGH RISK' finding, reply with 'HIGH RISK: ' plus briefly state the risk and necessary steps for exploitation. For 'LOW RISK' or 'NONE', just simply reply with the category ('LOW RISK' or 'NONE') only.";
+// Enhanced system prompt for structured command suggestions
+const SYSTEM_PROMPT = "You are a penetration test assistant. Analyze the provided console output and suggest up to 3 relevant commands that might be used to exploit the vulnerabilities or weaknesses discovered. If no vulnerabilities are found or no action is required, simply respond with 'NONE'. Return the result as a JSON object with two keys: 'commands' and 'vulnerability'. The 'commands' key should contain an array of commands, where each entry contains the command as a string and a brief explanation as another string, like this:\n{\n  \"commands\": [\n    {\n      \"command\": \"example command\",\n      \"explanation\": \"brief explanation\"\n    },\n    ...\n  ],\n  \"vulnerability\": \"Brief description of the most concerning vulnerability\"\n}\nIf no commands are applicable, return an empty array for 'commands'.";
 
-function postChat(author, data) {
+// postChat function removed - AI analysis results are handled via CandidateCommands only
+
+function parseAIResponse(content, provider) {
   try {
-    if (typeof data === 'string' && data.indexOf('HIGH RISK') !== -1) {
-      create("text", author, data);
+    // Try to extract JSON from the response
+    let jsonMatch = content.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      // If no JSON found, check for NONE response
+      if (content.trim().toUpperCase() === 'NONE') {
+        return null; // No commands to create
+      }
+      throw new Error('No valid JSON found in response');
     }
-  } catch (e) {}
+
+    const jsonData = JSON.parse(jsonMatch[0]);
+    
+    if (!jsonData.commands || !Array.isArray(jsonData.commands)) {
+      console.log(`[Chats] No valid commands array found in ${provider} response`);
+      return null;
+    }
+
+    return jsonData;
+  } catch (error) {
+    console.error(`[Chats] Failed to parse ${provider} response as JSON:`, error.message);
+    return null;
+  }
+}
+
+function createCommandsFromAI(aiData, provider) {
+  if (!aiData || !aiData.commands || aiData.commands.length === 0) {
+    return;
+  }
+
+  aiData.commands.forEach((cmdData, index) => {
+    if (!cmdData.command || !cmdData.explanation) {
+      console.log(`[Chats] Skipping invalid command data from ${provider}`);
+      return;
+    }
+
+    const commandConfig = {
+      name: `AI Suggested (${provider.toUpperCase()}) ${index + 1}: ${cmdData.explanation.substring(0, 50)}${cmdData.explanation.length > 50 ? '...' : ''}`,
+      template: cmdData.command,
+      pattern: ".*", // Match any command input for AI suggestions
+      group: provider,
+      output: { script: "" }
+    };
+    
+    try {
+      const newCommand = commands.add(commandConfig);
+      console.log(`[Chats] Added AI command from ${provider}: ${cmdData.command}`);
+    } catch (error) {
+      console.error(`[Chats] Failed to add AI suggested command: ${error.message}`);
+    }
+  });
+
+  // Commands and vulnerabilities are handled via CandidateCommands interface only
 }
 
 async function analyzeWithOpenAI(topic) {
@@ -67,11 +118,17 @@ async function analyzeWithOpenAI(topic) {
     const resp = await client.chat.completions.create({
       model: process.env.OPENAI_MODEL || config.openaiModel || config.model || "gpt-4o-mini",
       messages,
-      max_tokens: 250,
-      temperature: 0.5,
+      max_tokens: 500, // Increased for JSON response
+      temperature: 0.3, // Lower temperature for more consistent JSON
     });
     const content = resp.choices?.[0]?.message?.content || "";
-    if (content) postChat("openai", content);
+    if (content) {
+      // Parse the AI response and create commands
+      const aiData = parseAIResponse(content, "openai");
+      if (aiData) {
+        createCommandsFromAI(aiData, "OPENAI");
+      }
+    }
     return content ? `[openai] ${content}` : "";
   } catch (error) {
     const msg = `OpenAI error: ${error}`;
@@ -92,11 +149,17 @@ async function analyzeWithLocal(topic) {
     const resp = await client.chat.completions.create({
       model: process.env.LOCAL_LLM_MODEL || config.localModel || 'auto',
       messages,
-      max_tokens: 250,
-      temperature: 0.5,
+      max_tokens: 500, // Increased for JSON response
+      temperature: 0.3, // Lower temperature for more consistent JSON
     });
     const content = resp.choices?.[0]?.message?.content || "";
-    if (content) postChat("local-llm", content);
+    if (content) {
+      // Parse the AI response and create commands
+      const aiData = parseAIResponse(content, "local");
+      if (aiData) {
+        createCommandsFromAI(aiData, "LocalAI");
+      }
+    }
     return content ? `[local] ${content}` : "";
   } catch (error) {
     const msg = `Local LLM error: ${error}`;
@@ -124,7 +187,13 @@ async function analyzeWithGemini(topic) {
       });
       const parts = resp.data?.candidates?.[0]?.content?.parts || [];
       const content = parts.map(p => p.text || "").join("") || "";
-      if (content) postChat("gemini", content);
+      if (content) {
+        // Parse the AI response and create commands
+        const aiData = parseAIResponse(content, "gemini");
+        if (aiData) {
+          createCommandsFromAI(aiData, "GEMINI");
+        }
+      }
       return content ? `[gemini] ${content}` : "";
     } catch (error) {
       const status = error?.response?.status;

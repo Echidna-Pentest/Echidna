@@ -423,5 +423,6 @@ name: ${req.body.form.name}
 
 module.exports.setup = load;
 module.exports.get = get;
+module.exports.add = add;
 module.exports.getFilters = getFilters;
 module.exports.router = router;
