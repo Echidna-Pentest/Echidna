@@ -4,6 +4,7 @@ const logs = require('routes/logs');
 const targets = require('routes/targets');
 const chats = require('routes/chats');
 const criticalscandb = require('routes/criticalscandb');
+const terminals = require('routes/terminals');
 const child_process = require('child_process');
 const stream   = require( 'stream' );
 const process = require('process');
@@ -141,6 +142,7 @@ class Shell {
         this.process.write('PS1=' + promptname + '\n');
         this.terminalOutput = "";     // store terminal output to call filtering process
         this.lastAnalyzedExecNo = -1;  // guard to analyze once per command
+        this.lastAgentCommand = "";   // track last agent command to prevent loops
         const transformStream = new stream.Transform({
           highWaterMark: 16384 * 16384,
           transform: (chunk, encoding, callback) => {
@@ -227,7 +229,13 @@ class Shell {
               const analyzedText = this.terminalOutput.replace(/\r?\n?[^\r\n]*\$\s*$/, "\n");
               try {
                 const p = chats.analysis(analyzedText, false);
-
+                if (p && typeof p.then === 'function') {
+                  p.then((msg) => {
+                    console.log(`[Agent] AI analysis result: ${msg ? msg.substring(0, 200) : 'null'}...`);
+                    // AI analysis results are now handled directly in chats.js
+                    // ReactAgent is called immediately when CRITICAL vulnerabilities are detected
+                  }).catch(() => {});
+                }
               } catch (e) { /* noop */ }
               this.lastAnalyzedExecNo = this.execNo;
             }
@@ -384,6 +392,21 @@ function execute(terminalId, command) {
 }
 
 /**
+ * Execute command on a specific terminal
+ * @param {number} terminalId 
+ * @param {string} command 
+ * @param {boolean} logging 
+ * @returns {boolean} success
+ */
+function executeCommand(terminalId, command, logging = false) {
+  if (terminalId in _shells) {
+    _shells[terminalId].input(command, logging);
+    return true;
+  }
+  return false;
+}
+
+/**
  * REST API routing
  * @param {Object} router
  */
@@ -417,3 +440,4 @@ module.exports.create = create;
 module.exports.destroy = destroy;
 module.exports.resizeTerminal = resizeTerminal;
 module.exports.route = route;
+module.exports.executeCommand = executeCommand;

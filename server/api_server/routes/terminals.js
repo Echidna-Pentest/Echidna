@@ -235,7 +235,17 @@ function router() {
   return router;
 }
 
+/**
+ * Get all terminals
+ * @returns {Array<Object>} Array of all terminals
+ */
+function getAll() {
+  return _terminals;
+}
+
 module.exports.setup = setup;
+module.exports.create = create;
+module.exports.getAll = getAll;
 module.exports.setCommandname = setCommandname;
 module.exports.getCommandname = getCommandname;
 module.exports.router = router;

@@ -6,6 +6,8 @@ const config = require('../echidna.json');
 const { Configuration, OpenAIApi } = require("openai");
 const OpenAIClient = require('openai'); 
 const commands = require('routes/commands');
+const terminals = require('routes/terminals');
+const shell = require('routes/shell');
 
 /**
 * @type {string}
@@ -16,6 +18,29 @@ const SAVE_FILE = './data/chats.json';
 * @type {Array<Object>}
 */
 let _chats = [];
+
+/**
+ * Get or create AI terminal for agent command execution
+ * @returns {number} AI terminal ID
+ */
+function getOrCreateAITerminal() {
+  // Check if AI terminal already exists
+  const aiTerminals = terminals.getAll().filter(t => t.name === 'AI');
+  if (aiTerminals.length > 0) {
+    return aiTerminals[0].id;
+  }
+  
+  // Create new AI terminal
+  const aiTerminal = terminals.create('AI');
+  if (aiTerminal) {
+    console.log(`[Agent] Created AI terminal with ID: ${aiTerminal.id}`);
+    return aiTerminal.id;
+  }
+  
+  // Fallback to terminal 1 if creation fails
+  console.warn('[Agent] Failed to create AI terminal, falling back to terminal 1');
+  return 1;
+}
 
 /**
 * Chats class
@@ -51,19 +76,23 @@ const SYSTEM_PROMPT = "You are a penetration test assistant. Your role is to ana
 // postChat function removed - AI analysis results are handled via CandidateCommands only
 
 function parseAIResponse(content, provider) {
+  console.log(`[Debug] ${provider} parsing content: ${content ? content.substring(0, 200) : 'empty'}...`);
   try {
     // Try to extract JSON from the response
     let jsonMatch = content.match(/\{[\s\S]*\}/);
+    console.log(`[Debug] ${provider} JSON match found: ${jsonMatch ? 'Yes' : 'No'}`);
     if (!jsonMatch) {
       // If no JSON found, check for NONE response
       if (content.trim().toUpperCase() === 'NONE') {
         console.log(`[Chats] ${provider}: No HIGH/CRITICAL vulnerabilities found - skipping`);
         return null; // No commands to create
       }
+      console.log(`[Debug] ${provider} no JSON and not NONE, content: "${content.trim()}"`);
       throw new Error('No valid JSON found in response');
     }
 
     const jsonData = JSON.parse(jsonMatch[0]);
+    console.log(`[Debug] ${provider} parsed JSON severity: ${jsonData.severity}`);
     
     // Check if severity is HIGH or CRITICAL
     if (!jsonData.severity || !['HIGH', 'CRITICAL'].includes(jsonData.severity.toUpperCase())) {
@@ -85,8 +114,125 @@ function parseAIResponse(content, provider) {
     return jsonData;
   } catch (error) {
     console.error(`[Chats] Failed to parse ${provider} response as JSON:`, error.message);
+    if (content.includes('"severity"') && content.includes('CRITICAL')) {
+      console.log(`[Chats] ${provider}: Found truncated CRITICAL response, attempting recovery...`);
+      // Try to extract just the severity for agent triggering
+      return { severity: 'CRITICAL', vulnerability: 'Truncated response detected', commands: [] };
+    }
     return null;
   }
+}
+
+/**
+ * Call ReactAgent for vulnerability analysis and command execution
+ * @param {Object} aiData - AI analysis data with vulnerability info
+ * @param {string} provider - AI provider name
+ * @param {number} aiTerminalId - AI terminal ID for command execution
+ */
+function callReactAgent(aiData, provider, aiTerminalId) {
+  const { spawn } = require('child_process');
+  const script = config.agent?.script || './commands/agent_react.py';
+  const timeoutMs = config.agent?.timeoutMs || 60000;
+  const pythonPath = config.agent?.pythonPath || 'python3';
+  
+  // Prepare payload with vulnerability information for ReactAgent
+  const inputPayload = JSON.stringify({
+    lastOutput: "Recent vulnerability analysis detected: " + (aiData.vulnerability || "Unknown vulnerability"),
+    env: { currenthost: "default" }, // We don't have access to shell env here, use default
+    maxCommands: config.agent?.maxCommands || 1,
+    vulnerabilityInfo: {
+      severity: aiData.severity,
+      description: aiData.vulnerability,
+      provider: provider,
+      suggestedCommands: aiData.commands || []
+    }
+  });
+  
+  console.log(`[Agent] Spawning ReactAgent: ${pythonPath} ${script} with timeout ${timeoutMs}ms`);
+  const py = spawn(pythonPath, [script], { 
+    cwd: __dirname, 
+    env: process.env 
+  });
+  
+  let agentOut = '';
+  let agentErr = '';
+  const timer = setTimeout(() => {
+    console.log(`[Agent] Timeout after ${timeoutMs}ms, killing process...`);
+    shell.executeCommand(aiTerminalId, `echo "[Agent] Analysis timed out, executing direct exploitation..."\n`, false);
+    
+    // Use the first suggested command from the AI analysis as fallback
+    if (aiData.commands && aiData.commands.length > 0) {
+      const exploitCmd = aiData.commands[0].command;
+      shell.executeCommand(aiTerminalId, `echo "[Agent] Executing AI-suggested command: ${exploitCmd}"\n`, false);
+      shell.executeCommand(aiTerminalId, `${exploitCmd}\n`, false);
+    } else {
+      shell.executeCommand(aiTerminalId, `echo "[Agent] No AI commands available, using basic reconnaissance..."\n`, false);
+      shell.executeCommand(aiTerminalId, `whoami\n`, false);
+    }
+    
+    try { py.kill('SIGKILL'); } catch(e){}
+  }, timeoutMs);
+  
+  py.stdin.write(inputPayload);
+  py.stdin.end();
+  
+  py.stdout.on('data', (d) => agentOut += d.toString());
+  py.stderr.on('data', (d) => {
+    agentErr += d.toString();
+    // Show agent progress in AI terminal using echo commands
+    if (d.toString().includes('DEBUG:')) {
+      const debugLines = d.toString().trim().split('\n');
+      debugLines.forEach(line => {
+        if (line.includes('LLM client created') || line.includes('Creating ReAct agent') || line.includes('Tools created')) {
+          const cleanMsg = line.replace(/.*DEBUG:\s*/, '').replace(/['"]/g, '\\"').replace(/\s+/g, ' ').trim();
+          if (cleanMsg) {
+            shell.executeCommand(aiTerminalId, `echo "[Agent] ${cleanMsg}"\n`, false);
+          }
+        }
+      });
+    }
+  });
+  
+  py.on('close', (code) => {
+    clearTimeout(timer);
+    console.log(`[Agent] ReactAgent process closed with code: ${code}`);
+    console.log(`[Agent] Output length: ${agentOut.length}, Error length: ${agentErr.length}`);
+    
+    // Update AI terminal with agent completion status
+    if (code === 0) {
+      shell.executeCommand(aiTerminalId, `echo "[Agent] Analysis completed successfully (exit code: ${code})"\n`, false);
+    } else {
+      shell.executeCommand(aiTerminalId, `echo "[Agent] Analysis failed (exit code: ${code})"\n`, false);
+    }
+    
+    if (agentErr && agentErr.trim()) {
+      console.error('[Agent][stderr]', agentErr);
+    }
+    
+    if (agentOut && agentOut.trim()) {
+      console.log(`[Agent] Raw output: ${agentOut.substring(0, 200)}...`);
+      try {
+        // Try to parse JSON response from ReactAgent
+        const result = JSON.parse(agentOut.trim());
+        const cmd = result.next_command;
+        const reason = result.reason || 'ReactAgent suggestion';
+        
+        if (cmd && result.allowed && cmd.length < 4096) {
+          console.log(`[Agent] Executing ReactAgent command: ${cmd}`);
+          shell.executeCommand(aiTerminalId, `echo "[Agent] ${reason}: ${cmd}"\n`, false);
+          shell.executeCommand(aiTerminalId, cmd + "\n", false);
+        }
+      } catch (parseErr) {
+        // Fallback: treat first line as command (backward compatibility)
+        const cmd = agentOut.split(/\r?\n/)[0].trim();
+        if (cmd && cmd.length < 4096) {
+          console.log(`[Agent] Executing ReactAgent fallback command: ${cmd}`);
+          shell.executeCommand(aiTerminalId, `echo "[Agent] executing: ${cmd}"\n`, false);
+          shell.executeCommand(aiTerminalId, cmd + "\n", false);
+        }
+      }
+    }
+  });
 }
 
 function createCommandsFromAI(aiData, provider) {
@@ -95,6 +241,24 @@ function createCommandsFromAI(aiData, provider) {
     const message = `${aiData.severity.toUpperCase()} VULNERABILITY: ${aiData.vulnerability}`;
     create("text", provider, message);
     console.log(`[Chats] Added ${aiData.severity} vulnerability info to chat from ${provider}`);
+    
+    // If CRITICAL vulnerability detected, trigger ReactAgent immediately
+    if (['HIGH', 'CRITICAL'].includes(aiData.severity?.toUpperCase()) && config.agent?.enabled) {
+      console.log('[Agent] HIGH/CRITICAL vulnerability detected, triggering ReactAgent...');
+      
+      // Create AI terminal for command execution
+      const aiTerminalId = getOrCreateAITerminal();
+      console.log(`[Agent] Created/found AI terminal: ${aiTerminalId}`);
+      
+      // Ensure shell exists for the AI terminal
+      shell.create(aiTerminalId);
+      
+      // Display initial message
+      shell.executeCommand(aiTerminalId, 'echo "[Agent] Starting analysis of CRITICAL vulnerability..."\n', false);
+      
+      // Call ReactAgent with vulnerability information
+      callReactAgent(aiData, provider, aiTerminalId);
+    }
   }
 
   // Create candidate commands for exploitation commands
@@ -138,7 +302,7 @@ async function analyzeWithOpenAI(topic) {
     const resp = await client.chat.completions.create({
       model: process.env.OPENAI_MODEL || config.openai?.model || "gpt-4o-mini",
       messages,
-      max_tokens: 500, // Increased for JSON response
+      max_tokens: 1000, // Increased for complete JSON response
       temperature: 0.3, // Lower temperature for more consistent JSON
     });
     const content = resp.choices?.[0]?.message?.content || "";
@@ -169,13 +333,15 @@ async function analyzeWithLocal(topic) {
     const resp = await client.chat.completions.create({
       model: process.env.LOCAL_LLM_MODEL || config.localAI?.model || 'auto',
       messages,
-      max_tokens: 500, // Increased for JSON response
+      max_tokens: 1000, // Increased for complete JSON response
       temperature: 0.3, // Lower temperature for more consistent JSON
     });
     const content = resp.choices?.[0]?.message?.content || "";
+    console.log(`[Debug] Local AI raw response: ${content ? content.substring(0, 300) : 'empty'}...`);
     if (content) {
       // Parse the AI response and create commands
       const aiData = parseAIResponse(content, "local");
+      console.log(`[Debug] Local AI parsed data:`, aiData ? 'Valid JSON found' : 'No valid data');
       if (aiData) {
         createCommandsFromAI(aiData, "Local-AI");
       }
