@@ -45,8 +45,8 @@ class Chats {
   }
 }
 
-// Enhanced system prompt for structured command suggestions
-const SYSTEM_PROMPT = "You are a penetration test assistant. Analyze the provided console output and suggest up to 3 relevant commands that might be used to exploit the vulnerabilities or weaknesses discovered. If no vulnerabilities are found or no action is required, simply respond with 'NONE'. Return the result as a JSON object with two keys: 'commands' and 'vulnerability'. The 'commands' key should contain an array of commands, where each entry contains the command as a string and a brief explanation as another string, like this:\n{\n  \"commands\": [\n    {\n      \"command\": \"example command\",\n      \"explanation\": \"brief explanation\"\n    },\n    ...\n  ],\n  \"vulnerability\": \"Brief description of the most concerning vulnerability\"\n}\nIf no commands are applicable, return an empty array for 'commands'.";
+// System prompt for role and format definition
+const SYSTEM_PROMPT = "You are a penetration test assistant. Your role is to analyze security findings and identify vulnerabilities that require immediate exploitation.\n\nResponse Format Rules:\n- ONLY respond when you find HIGH or CRITICAL severity vulnerabilities\n- For low-risk findings, informational output, or normal system behavior, respond with 'NONE'\n- When HIGH/CRITICAL vulnerability is found, respond in JSON format:\n\n{\n  \"severity\": \"HIGH\" or \"CRITICAL\",\n  \"vulnerability\": \"Clear description of the vulnerability and its impact\",\n  \"commands\": [\n    {\n      \"command\": \"specific exploitation command\",\n      \"explanation\": \"what this command exploits and expected outcome\"\n    }\n  ]\n}\n\nProvide exactly 3 exploitation commands that directly target the vulnerability.";
 
 // postChat function removed - AI analysis results are handled via CandidateCommands only
 
@@ -57,6 +57,7 @@ function parseAIResponse(content, provider) {
     if (!jsonMatch) {
       // If no JSON found, check for NONE response
       if (content.trim().toUpperCase() === 'NONE') {
+        console.log(`[Chats] ${provider}: No HIGH/CRITICAL vulnerabilities found - skipping`);
         return null; // No commands to create
       }
       throw new Error('No valid JSON found in response');
@@ -64,11 +65,23 @@ function parseAIResponse(content, provider) {
 
     const jsonData = JSON.parse(jsonMatch[0]);
     
+    // Check if severity is HIGH or CRITICAL
+    if (!jsonData.severity || !['HIGH', 'CRITICAL'].includes(jsonData.severity.toUpperCase())) {
+      console.log(`[Chats] ${provider}: Vulnerability severity not HIGH/CRITICAL - skipping`);
+      return null;
+    }
+    
     if (!jsonData.commands || !Array.isArray(jsonData.commands)) {
       console.log(`[Chats] No valid commands array found in ${provider} response`);
       return null;
     }
 
+    if (jsonData.commands.length === 0) {
+      console.log(`[Chats] ${provider}: No exploitation commands provided - skipping`);
+      return null;
+    }
+
+    console.log(`[Chats] ${provider}: Found ${jsonData.severity} severity vulnerability - processing`);
     return jsonData;
   } catch (error) {
     console.error(`[Chats] Failed to parse ${provider} response as JSON:`, error.message);
@@ -77,7 +90,16 @@ function parseAIResponse(content, provider) {
 }
 
 function createCommandsFromAI(aiData, provider) {
+  // Create chat message for HIGH/CRITICAL vulnerability information
+  if (aiData && aiData.vulnerability && aiData.severity) {
+    const message = `${aiData.severity.toUpperCase()} VULNERABILITY: ${aiData.vulnerability}`;
+    create("text", provider, message);
+    console.log(`[Chats] Added ${aiData.severity} vulnerability info to chat from ${provider}`);
+  }
+
+  // Create candidate commands for exploitation commands
   if (!aiData || !aiData.commands || aiData.commands.length === 0) {
+    console.log(`[Chats] No exploitation commands to create from ${provider}`);
     return;
   }
 
@@ -88,9 +110,9 @@ function createCommandsFromAI(aiData, provider) {
     }
 
     const commandConfig = {
-      name: `AI Suggested (${provider.toUpperCase()}) ${index + 1}: ${cmdData.explanation.substring(0, 50)}${cmdData.explanation.length > 50 ? '...' : ''}`,
+      name: `Exploit (${provider.toUpperCase()}) ${index + 1}: ${cmdData.explanation.substring(0, 50)}${cmdData.explanation.length > 50 ? '...' : ''}`,
       template: cmdData.command,
-      pattern: ".*", // Match any command input for AI suggestions
+      pattern: ".*", // Match any command input for exploitation
       group: provider,
       output: { script: "" }
     };
@@ -102,8 +124,6 @@ function createCommandsFromAI(aiData, provider) {
       console.error(`[Chats] Failed to add AI suggested command: ${error.message}`);
     }
   });
-
-  // Commands and vulnerabilities are handled via CandidateCommands interface only
 }
 
 async function analyzeWithOpenAI(topic) {
@@ -111,8 +131,8 @@ async function analyzeWithOpenAI(topic) {
   if (!apiKey) return "";
   const client = new OpenAIClient({ apiKey });
   const messages = [
-    { role: "system", content: SYSTEM_PROMPT + "\n" },
-    { role: "user", content: topic }
+    { role: "system", content: SYSTEM_PROMPT },
+    { role: "user", content: `Analyze the following console output for HIGH or CRITICAL security vulnerabilities that can be exploited.\n\nHIGH/CRITICAL vulnerabilities include:\n- Remote code execution opportunities\n- Authentication bypasses\n- Privilege escalation paths\n- SQL injection vulnerabilities\n- Exposed sensitive services (FTP with anonymous access, unprotected databases, etc.)\n- Default credentials on critical services\n- Buffer overflow possibilities\n- Directory traversal vulnerabilities\n\nOnly respond if you find serious vulnerabilities that require immediate exploitation attempts. Console output to analyze:\n\n${topic}` }
   ];
   try {
     const resp = await client.chat.completions.create({
@@ -126,7 +146,7 @@ async function analyzeWithOpenAI(topic) {
       // Parse the AI response and create commands
       const aiData = parseAIResponse(content, "openai");
       if (aiData) {
-        createCommandsFromAI(aiData, "OPENAI");
+        createCommandsFromAI(aiData, "openai");
       }
     }
     return content ? `[openai] ${content}` : "";
@@ -142,8 +162,8 @@ async function analyzeWithLocal(topic) {
   const apiKey = process.env.OPENAI_API_KEY || 'sk-local';
   const client = new OpenAIClient({ apiKey, baseURL });
   const messages = [
-    { role: "system", content: SYSTEM_PROMPT + "\n" },
-    { role: "user", content: topic }
+    { role: "system", content: SYSTEM_PROMPT },
+    { role: "user", content: `Analyze the following console output for HIGH or CRITICAL security vulnerabilities that can be exploited.\n\nHIGH/CRITICAL vulnerabilities include:\n- Remote code execution opportunities\n- Authentication bypasses\n- Privilege escalation paths\n- SQL injection vulnerabilities\n- Exposed sensitive services (FTP with anonymous access, unprotected databases, etc.)\n- Default credentials on critical services\n- Buffer overflow possibilities\n- Directory traversal vulnerabilities\n\nOnly respond if you find serious vulnerabilities that require immediate exploitation attempts. Console output to analyze:\n\n${topic}` }
   ];
   try {
     const resp = await client.chat.completions.create({
@@ -157,7 +177,7 @@ async function analyzeWithLocal(topic) {
       // Parse the AI response and create commands
       const aiData = parseAIResponse(content, "local");
       if (aiData) {
-        createCommandsFromAI(aiData, "LocalAI");
+        createCommandsFromAI(aiData, "Local-AI");
       }
     }
     return content ? `[local] ${content}` : "";
@@ -171,9 +191,11 @@ async function analyzeWithGemini(topic) {
   const key = process.env.GEMINI_API_KEY || config.geminiApiKey;
   let model = process.env.GEMINI_MODEL || config.geminiModel || 'gemini-1.5-flash';
   if (!key) return "";
+  const userPrompt = `Analyze the following console output for HIGH or CRITICAL security vulnerabilities that can be exploited.\n\nHIGH/CRITICAL vulnerabilities include:\n- Remote code execution opportunities\n- Authentication bypasses\n- Privilege escalation paths\n- SQL injection vulnerabilities\n- Exposed sensitive services (FTP with anonymous access, unprotected databases, etc.)\n- Default credentials on critical services\n- Buffer overflow possibilities\n- Directory traversal vulnerabilities\n\nOnly respond if you find serious vulnerabilities that require immediate exploitation attempts. Console output to analyze:\n\n${topic}`;
+  
   const body = {
     contents: [
-      { role: "user", parts: [{ text: `${SYSTEM_PROMPT}\n\n${topic}` }] }
+      { role: "user", parts: [{ text: `${SYSTEM_PROMPT}\n\n${userPrompt}` }] }
     ]
   };
   const maxRetries = 3;
@@ -189,9 +211,9 @@ async function analyzeWithGemini(topic) {
       const content = parts.map(p => p.text || "").join("") || "";
       if (content) {
         // Parse the AI response and create commands
-        const aiData = parseAIResponse(content, "gemini");
+        const aiData = parseAIResponse(content, "Gemini-AI");
         if (aiData) {
-          createCommandsFromAI(aiData, "GEMINI");
+          createCommandsFromAI(aiData, "Gemini-AI");
         }
       }
       return content ? `[gemini] ${content}` : "";

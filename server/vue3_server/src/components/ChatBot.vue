@@ -210,6 +210,20 @@ export default {
   border-radius: 5px;
 }
 
+.Gemini-AI {
+  padding: 5px;
+  margin: 5px;
+  background-color: rgba(128, 255, 128, 0.45);
+  border-radius: 5px;
+}
+
+.Local-AI {
+  padding: 5px;
+  margin: 5px;
+  background-color: rgba(255, 255, 128, .5);
+  border-radius: 5px;
+}
+
 
 .chat-input {
   display: flex;
