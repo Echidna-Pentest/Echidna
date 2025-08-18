@@ -127,7 +127,7 @@ function createCommandsFromAI(aiData, provider) {
 }
 
 async function analyzeWithOpenAI(topic) {
-  const apiKey = process.env.OPENAI_API_KEY || config.apiKey;
+  const apiKey = process.env.OPENAI_API_KEY || config.openai?.apiKey;
   if (!apiKey) return "";
   const client = new OpenAIClient({ apiKey });
   const messages = [
@@ -136,7 +136,7 @@ async function analyzeWithOpenAI(topic) {
   ];
   try {
     const resp = await client.chat.completions.create({
-      model: process.env.OPENAI_MODEL || config.openaiModel || config.model || "gpt-4o-mini",
+      model: process.env.OPENAI_MODEL || config.openai?.model || "gpt-4o-mini",
       messages,
       max_tokens: 500, // Increased for JSON response
       temperature: 0.3, // Lower temperature for more consistent JSON
@@ -157,7 +157,7 @@ async function analyzeWithOpenAI(topic) {
 }
 
 async function analyzeWithLocal(topic) {
-  const baseURL = process.env.LOCAL_LLM_BASEURL || config.localBaseUrl;
+  const baseURL = process.env.LOCAL_LLM_BASEURL || config.localAI?.baseUrl;
   if (!baseURL) return "";
   const apiKey = process.env.OPENAI_API_KEY || 'sk-local';
   const client = new OpenAIClient({ apiKey, baseURL });
@@ -167,7 +167,7 @@ async function analyzeWithLocal(topic) {
   ];
   try {
     const resp = await client.chat.completions.create({
-      model: process.env.LOCAL_LLM_MODEL || config.localModel || 'auto',
+      model: process.env.LOCAL_LLM_MODEL || config.localAI?.model || 'auto',
       messages,
       max_tokens: 500, // Increased for JSON response
       temperature: 0.3, // Lower temperature for more consistent JSON
@@ -188,8 +188,8 @@ async function analyzeWithLocal(topic) {
 }
 
 async function analyzeWithGemini(topic) {
-  const key = process.env.GEMINI_API_KEY || config.geminiApiKey;
-  let model = process.env.GEMINI_MODEL || config.geminiModel || 'gemini-1.5-flash';
+  const key = process.env.GEMINI_API_KEY || config.gemini?.apiKey;
+  let model = process.env.GEMINI_MODEL || config.gemini?.model || 'gemini-1.5-flash';
   if (!key) return "";
   const userPrompt = `Analyze the following console output for HIGH or CRITICAL security vulnerabilities that can be exploited.\n\nHIGH/CRITICAL vulnerabilities include:\n- Remote code execution opportunities\n- Authentication bypasses\n- Privilege escalation paths\n- SQL injection vulnerabilities\n- Exposed sensitive services (FTP with anonymous access, unprotected databases, etc.)\n- Default credentials on critical services\n- Buffer overflow possibilities\n- Directory traversal vulnerabilities\n\nOnly respond if you find serious vulnerabilities that require immediate exploitation attempts. Console output to analyze:\n\n${topic}`;
   
@@ -240,9 +240,9 @@ async function analyzeWithGemini(topic) {
 }
 
 function providerEnabled(name) {
-  if (name === 'openai') return (process.env.ENABLE_OPENAI?.toLowerCase() === 'true') || (config.openaiEnabled ?? true);
-  if (name === 'local')  return (process.env.ENABLE_LOCAL?.toLowerCase() === 'true')  || (config.localEnabled ?? !!(process.env.LOCAL_LLM_BASEURL || config.localBaseUrl));
-  if (name === 'gemini') return (process.env.ENABLE_GEMINI?.toLowerCase() === 'true') || (config.geminiEnabled ?? false);
+  if (name === 'openai') return (process.env.ENABLE_OPENAI?.toLowerCase() === 'true') || (config.openai?.enabled ?? true);
+  if (name === 'local')  return (process.env.ENABLE_LOCAL?.toLowerCase() === 'true')  || (config.localAI?.enabled ?? !!(process.env.LOCAL_LLM_BASEURL || config.localAI?.baseUrl));
+  if (name === 'gemini') return (process.env.ENABLE_GEMINI?.toLowerCase() === 'true') || (config.gemini?.enabled ?? false);
   return false;
 }
 

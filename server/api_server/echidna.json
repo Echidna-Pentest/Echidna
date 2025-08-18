@@ -1,11 +1,26 @@
 {
-    "AIAnalysis": false,
-    "openaiEnabled": false,
-    "localEnabled": false,
-    "geminiEnabled": false,
-    "apiKey": "openAIAPIKey",
-    "localBaseUrl": "http://172.20.10.2:1234/v1",
-    "model": "gpt-4o-mini",
-    "geminiApiKey": "geminiApiKey",
-    "geminiModel": "gemini-2.0-flash"
+    "AIAnalysis": true,
+    "openai": {
+        "enabled": false,
+        "apiKey": "APIKEY",
+        "model": "gpt-4o-mini"
+    },
+    "gemini": {
+        "enabled": true,
+        "apiKey": "APIKEY",
+        "model": "gemini-2.5-flash"
+    },
+    "localAI": {
+        "enabled": true,
+        "baseUrl": "http://172.20.10.2:1234/v1",
+        "model": "auto"
+    },
+    "agent": {
+        "enabled": true,
+        "script": "./commands/agent_react.py",
+        "pythonPath": "../../../venv/bin/python",
+        "maxCommands": 1,
+        "maxIterations": 3,
+        "timeoutMs": 20000
+    }
 }
