@@ -77,6 +77,7 @@ const SYSTEM_PROMPT = "You are a penetration test assistant. Your role is to ana
 
 function parseAIResponse(content, provider) {
   console.log(`[Debug] ${provider} parsing content: ${content ? content.substring(0, 200) : 'empty'}...`);
+  console.log(`[Debug] ${provider} FULL content: "${content}"`);
   try {
     // Try to extract JSON from the response
     let jsonMatch = content.match(/\{[\s\S]*\}/);
@@ -131,9 +132,13 @@ function parseAIResponse(content, provider) {
  */
 function callReactAgent(aiData, provider, aiTerminalId) {
   const { spawn } = require('child_process');
+  const path = require('path');
   const script = config.agent?.script || './commands/agent_react.py';
   const timeoutMs = config.agent?.timeoutMs || 60000;
   const pythonPath = config.agent?.pythonPath || 'python3';
+  
+  // Fix the script path - resolve relative to the api_server directory, not routes
+  const scriptPath = path.resolve(__dirname, '..', script);
   
   // Prepare payload with vulnerability information for ReactAgent
   const inputPayload = JSON.stringify({
@@ -148,9 +153,9 @@ function callReactAgent(aiData, provider, aiTerminalId) {
     }
   });
   
-  console.log(`[Agent] Spawning ReactAgent: ${pythonPath} ${script} with timeout ${timeoutMs}ms`);
-  const py = spawn(pythonPath, [script], { 
-    cwd: __dirname, 
+  console.log(`[Agent] Spawning ReactAgent: ${pythonPath} ${scriptPath} with timeout ${timeoutMs}ms`);
+  const py = spawn(pythonPath, [scriptPath], { 
+    cwd: path.resolve(__dirname, '..'), 
     env: process.env 
   });
   
@@ -302,7 +307,7 @@ async function analyzeWithOpenAI(topic) {
     const resp = await client.chat.completions.create({
       model: process.env.OPENAI_MODEL || config.openai?.model || "gpt-4o-mini",
       messages,
-      max_tokens: 1000, // Increased for complete JSON response
+      max_tokens: 3000, // Increased for complete JSON response
       temperature: 0.3, // Lower temperature for more consistent JSON
     });
     const content = resp.choices?.[0]?.message?.content || "";
@@ -333,7 +338,7 @@ async function analyzeWithLocal(topic) {
     const resp = await client.chat.completions.create({
       model: process.env.LOCAL_LLM_MODEL || config.localAI?.model || 'auto',
       messages,
-      max_tokens: 1000, // Increased for complete JSON response
+      max_tokens: 3000, // Increased for complete JSON response
       temperature: 0.3, // Lower temperature for more consistent JSON
     });
     const content = resp.choices?.[0]?.message?.content || "";
