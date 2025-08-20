@@ -27,7 +27,14 @@
             :key="index"
             :class="message.author"
           >
-            <p>{{ message.data }}</p>
+            <div v-if="message.author && message.author.startsWith('ReactAgent-')" class="agent-message">
+              <div class="agent-header">
+                <strong>[AI] ReactAgent Analysis</strong>
+                <span class="agent-provider">{{ message.author.replace('ReactAgent-', '') }}</span>
+              </div>
+              <pre class="agent-content">{{ message.data }}</pre>
+            </div>
+            <p v-else>{{ message.data }}</p>
             <!--            <span>{{ message.time }}</span> -->
           </div>
         </div>
@@ -203,6 +210,13 @@ export default {
   border-radius: 5px;
 }
 
+.open-AI {
+  padding: 5px;
+  margin: 5px;
+  background-color: rgba(208, 128, 255, 0.35);
+  border-radius: 5px;
+}
+
 .gemini {
   padding: 5px;
   margin: 5px;
@@ -222,6 +236,123 @@ export default {
   margin: 5px;
   background-color: rgba(255, 255, 128, .5);
   border-radius: 5px;
+}
+
+/* ReactAgent styles */
+.ReactAgent-openai {
+  padding: 8px;
+  margin: 8px;
+  background: linear-gradient(135deg, rgba(255, 165, 0, 0.2), rgba(255, 69, 0, 0.15));
+  border-left: 4px solid #ff6347;
+  border-radius: 8px;
+  font-family: 'Courier New', monospace;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.ReactAgent-open-AI {
+  padding: 8px;
+  margin: 8px;
+  background: linear-gradient(135deg, rgba(255, 165, 0, 0.2), rgba(255, 69, 0, 0.15));
+  border-left: 4px solid #ff6347;
+  border-radius: 8px;
+  font-family: 'Courier New', monospace;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.ReactAgent-gemini {
+  padding: 8px;
+  margin: 8px;
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.2), rgba(16, 185, 129, 0.15));
+  border-left: 4px solid #10b981;
+  border-radius: 8px;
+  font-family: 'Courier New', monospace;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.ReactAgent-Local-AI {
+  padding: 8px;
+  margin: 8px;
+  background: linear-gradient(135deg, rgba(147, 51, 234, 0.2), rgba(139, 92, 246, 0.15));
+  border-left: 4px solid #8b5cf6;
+  border-radius: 8px;
+  font-family: 'Courier New', monospace;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Generic ReactAgent style for unknown providers */
+[class*="ReactAgent-"] {
+  padding: 8px;
+  margin: 8px;
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(37, 99, 235, 0.15));
+  border-left: 4px solid #3b82f6;
+  border-radius: 8px;
+  font-family: 'Courier New', monospace;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  position: relative;
+}
+
+/* Add an indicator for ReactAgent messages */
+[class*="ReactAgent-"]::before {
+  content: "[AI] ";
+  font-size: 14px;
+  font-weight: bold;
+  margin-right: 8px;
+  color: #374151;
+}
+
+/* Better formatting for ReactAgent messages */
+[class*="ReactAgent-"] p {
+  margin: 0;
+  white-space: pre-line;
+  line-height: 1.4;
+}
+
+/* Enhanced formatting for ReactAgent content */
+[class*="ReactAgent-"] strong {
+  color: #1f2937;
+  font-weight: 600;
+}
+
+[class*="ReactAgent-"] code {
+  background-color: rgba(0, 0, 0, 0.1);
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-family: 'Courier New', monospace;
+}
+
+/* Special styling for ReactAgent message structure */
+.agent-message {
+  width: 100%;
+}
+
+.agent-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.agent-provider {
+  font-size: 12px;
+  background-color: rgba(0, 0, 0, 0.1);
+  padding: 2px 6px;
+  border-radius: 12px;
+  font-weight: normal;
+}
+
+.agent-content {
+  margin: 0;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  font-family: 'Courier New', monospace;
+  font-size: 13px;
+  line-height: 1.4;
+  background-color: rgba(255, 255, 255, 0.3);
+  padding: 8px;
+  border-radius: 4px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
 }
 
 
