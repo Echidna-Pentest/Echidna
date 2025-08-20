@@ -61,7 +61,7 @@ def create_llm_client(config: Dict[str, Any]):
             client = ChatGoogleGenerativeAI(
                 model=gemini_config.get('model', 'gemini-1.5-flash'),
                 google_api_key=gemini_config.get('apiKey'),
-                temperature=0.3
+                temperature=0.0
             )
             logger.debug(f"DEBUG: Gemini client created successfully")
             return client
@@ -78,7 +78,7 @@ def create_llm_client(config: Dict[str, Any]):
             client = ChatOpenAI(
                 model=openai_config.get('model', 'gpt-4o-mini'),
                 api_key=openai_config.get('apiKey'),
-                temperature=0.1
+                temperature=0.0
             )
             logger.debug(f"DEBUG: OpenAI client created successfully")
             return client
@@ -97,8 +97,10 @@ def create_llm_client(config: Dict[str, Any]):
                     model=localai_config.get('model', 'auto'),
                     base_url=localai_config.get('baseUrl'),
                     api_key='sk-local',
-                    temperature=0.1,
-                    timeout=10  # Add timeout for LocalAI connections
+                    temperature=0.0,
+                    timeout=10,  # Add timeout for LocalAI connections
+                    streaming=False,  # Disable streaming to avoid stop parameter issues
+                    max_retries=1
                 )
                 logger.debug(f"DEBUG: Local LLM client created successfully")
                 return client
@@ -280,47 +282,29 @@ def create_react_agent(llm, last_output: str, env: Dict[str, Any], vulnerability
             vuln_description = vulnerability_info.get('description', 'Not available')
             vuln_provider = vulnerability_info.get('provider', 'Unknown')
             
-            context_parts = [
-                f"TARGET VULNERABILITY ANALYSIS:",
-                f"- Severity: {vuln_severity} {'' if vuln_severity in ['HIGH', 'CRITICAL'] else '' if vuln_severity == 'MEDIUM' else ''}",
-                f"- Description: {vuln_description}",
-                f"- Analysis Provider: {vuln_provider}",
-                f"- Exploitation Status: ACTIVE_EXPLOITATION_PHASE"
-            ]
-            
             suggested_commands = vulnerability_info.get('suggestedCommands', [])
+            logger.debug(f"DEBUG: Found {len(suggested_commands)} suggested commands")
+            for idx, cmd in enumerate(suggested_commands):
+                logger.debug(f"DEBUG: Command {idx + 1}: {cmd}")
+            
             if suggested_commands:
-                context_parts.append("\nPRIORITY EXPLOITATION COMMANDS (EXECUTE THESE FIRST):")
-                for i, cmd in enumerate(suggested_commands[:5], 1):  # Top 5 commands
+                context_parts = [f"Available commands:"]
+                for i, cmd in enumerate(suggested_commands[:3], 1):  # Top 3 commands only
                     command = cmd.get('command', 'Unknown')
-                    explanation = cmd.get('explanation', 'No explanation')
-                    confidence = cmd.get('confidence', 0.5)
-                    
-                    # Prioritize by confidence and severity
-                    priority_score = confidence * (1.5 if vuln_severity in ['HIGH', 'CRITICAL'] else 1.0)
-                    
-                    context_parts.append(f"  {i}. [{priority_score:.2f}] {command}")
-                    context_parts.append(f"     └─ Purpose: {explanation}")
+                    context_parts.append(f"{i}. {command}")
                     
                     exploitation_targets.append({
                         "command": command,
-                        "explanation": explanation,
+                        "explanation": cmd.get('explanation', 'No explanation'),
                         "priority": i,
-                        "confidence": confidence,
-                        "priority_score": priority_score,
+                        "confidence": cmd.get('confidence', 0.5),
+                        "priority_score": 0.75,
                         "vulnerability_severity": vuln_severity
                     })
                 
-                # Sort by priority score
-                exploitation_targets.sort(key=lambda x: x["priority_score"], reverse=True)
                 exploitation_status = "ACTIVE_EXPLOITATION_PHASE"
-            
-            # Add exploitation success criteria
-            context_parts.extend([
-                "\nEXPLOITATION SUCCESS CRITERIA:",
-                "- Gain shell access (whoami, id showing successful login)",
-                "- Verify each step before proceeding to next"
-            ])
+            else:
+                context_parts = ["No commands available"]
             
             vulnerability_context = "\n".join(context_parts)
         else:
@@ -344,116 +328,164 @@ def create_react_agent(llm, last_output: str, env: Dict[str, Any], vulnerability
             for i, target in enumerate(exploitation_targets[:3], 1):
                 logger.debug(f"  {i}. {target['command']} (score: {target['priority_score']:.2f})")
         
-        # Create system prompt for exploitation-focused agent
-        system_prompt = """You are a PENETRATION TESTING AGENT. Your mission:
+        # *** EARLY DEBUG: Print prompts here before LLM creation ***
+        logger.debug("="*80)
+        logger.debug("EARLY DEBUG - VULNERABILITY CONTEXT:")
+        logger.debug(vulnerability_context)
+        logger.debug("="*80)
+        
+        # Create system prompt with few-shot example
+        system_prompt = """You have access to tools: {tools}
 
-GOAL: Execute the suggested exploitation commands and analyze if they are effective.
+You MUST follow this exact format:
+Question: What command should I run?
+Thought: I need to pick a command from the list
+Action: shell
+Action Input: [exact command]
+Observation: [result]
+Thought: [analysis]
+Final Answer: [summary]
 
-STRATEGY:
-1. Execute the suggested commands in order of priority
-2. Analyze each command's output to determine success or failure
-3. If a command succeeds, verify the success with follow-up commands
-4. If a command fails, explain why and move to the next suggested command
-5. Document all results clearly
+Example:
+Question: What command should I run?
+Thought: I need to execute the first command from the list
+Action: shell
+Action Input: whoami
+Observation: root
+Thought: Command executed successfully, I am root
+Final Answer: Successfully executed whoami command and confirmed root access"""
 
-AVAILABLE TOOLS: {tools}
-
-EXECUTION RULES:
-- Execute each suggested command exactly as provided
-- Analyze command output for exploitation success indicators
-- Use verification commands (whoami, id) only after successful exploitation
-- Provide clear analysis of what each result means"""
-
-        # Create user prompt with current context
-        user_prompt_template = """PENETRATION TESTING TASK:
-
-TARGET: {current_host}
-
-SUGGESTED COMMANDS TO TEST:
+        # Create user prompt with mandatory first action
+        user_prompt_template = """Commands to test:
 {vulnerability_context}
 
-PREVIOUS OUTPUT:
-{terminal_output}
+Available tools: {tool_names}
 
-TASK: Execute the suggested commands and analyze their effectiveness.
-
-AVAILABLE TOOLS: {tool_names}
-
-Use this format:
-
-Question: Which suggested command should I execute and test?
-Thought: [Select the next suggested command to execute]
+MANDATORY FIRST ACTION:
+On your first turn, you MUST output exactly:
 Action: shell
-Action Input: [exact_command_from_suggestions]
-Observation: [command output]
-Thought: [Analyze if this command was successful for exploitation]
-Final Answer: [Summary of results - was the exploitation successful?]
+Action Input: <the top-1 command from the list above>
+Then wait for Observation before any further thoughts.
 
-Question: Which suggested command should I execute and test?
+Question: What command should I run?
 Thought:{agent_scratchpad}"""
+
+        # *** EARLY DEBUG: Print system and user prompts here before any LLM operations ***
+        logger.debug("="*80)
+        logger.debug("EARLY DEBUG - SYSTEM PROMPT:")
+        logger.debug(system_prompt)
+        logger.debug("="*80)
+        logger.debug("EARLY DEBUG - USER PROMPT TEMPLATE:")
+        logger.debug(user_prompt_template)
+        logger.debug("="*80)
 
         # Combine system and user prompts
         full_template = system_prompt + "\n\n" + user_prompt_template
         prompt = PromptTemplate.from_template(full_template)
         
+        # Debug: Print the prompts for debugging
+        logger.debug("="*80)
+        logger.debug("SYSTEM PROMPT:")
+        logger.debug(system_prompt)
+        logger.debug("="*80)
+        logger.debug("USER PROMPT TEMPLATE:")
+        logger.debug(user_prompt_template)
+        logger.debug("="*80)
+        logger.debug("VULNERABILITY CONTEXT:")
+        logger.debug(vulnerability_context)
+        logger.debug("="*80)
+        
         logger.debug(f"DEBUG: Exploitation-focused prompt template created")
         
-        # Create agent with exploitation focus - allow more iterations for comprehensive testing
-        agent = create_react_agent(llm, tools, prompt)
-        agent_executor = AgentExecutor(
-            agent=agent, 
-            tools=tools, 
-            verbose=False,  # Disable verbose output to avoid JSON parsing issues
-            max_iterations=max_iterations * 3,  # Allow more iterations for execution and verification
-            handle_parsing_errors=True,
-            return_intermediate_steps=True
-        )
+        # Since LangChain ReAct agent has streaming issues with LocalAI, 
+        # let's use direct LLM calls to avoid the stop parameter problem
+        logger.debug(f"DEBUG: Using direct LLM approach to avoid streaming issues")
         
-        logger.debug(f"DEBUG: Exploitation agent and executor created successfully")
-        logger.debug(f"DEBUG: Calling AI service for exploitation planning...")
+        # Format the complete prompt manually
+        final_prompt = system_prompt.replace("{tools}", str([tool.name for tool in tools])) + "\n\n" + \
+                      user_prompt_template.replace("{vulnerability_context}", vulnerability_context) \
+                                          .replace("{tool_names}", str([tool.name for tool in tools])) \
+                                          .replace("{agent_scratchpad}", "")
         
-        # Run agent with exploitation focus - execute and analyze iteratively
-        result = agent_executor.invoke({
-            "input": "Execute the next exploitation command and analyze its results",
-            "current_host": env.get('currenthost', 'unknown_target'),
-            "terminal_output": last_output[-4000:],  # Last 4000 chars for more context
-            "vulnerability_context": vulnerability_context
-        })
+        logger.debug("="*80)
+        logger.debug("FINAL PROMPT TO LLM:")
+        logger.debug(final_prompt)
+        logger.debug("="*80)
         
-        logger.debug(f"DEBUG: AI service call completed")
-        logger.debug(f"DEBUG: Agent result keys: {list(result.keys())}")
+        try:
+            # Make direct LLM call without streaming
+            from langchain.schema import HumanMessage
+            response = llm.invoke([HumanMessage(content=final_prompt)])
+            logger.debug(f"DEBUG: LLM Response: {response.content}")
+            
+            # Parse the response to extract Action and Action Input
+            response_text = response.content
+            executed_commands = []
+            
+            # Look for Action: shell and Action Input: patterns
+            lines = response_text.split('\n')
+            current_command = None
+            
+            for line in lines:
+                line = line.strip()
+                if line.startswith('Action Input:'):
+                    current_command = line[len('Action Input:'):].strip()
+                    if current_command and len(current_command) > 0:
+                        # Execute the command using our shell tool
+                        logger.debug(f"DEBUG: Executing command: {current_command}")
+                        shell_tool = create_shell_tool()
+                        command_output = shell_tool.func(current_command)
+                        
+                        executed_commands.append({
+                            'command': current_command,
+                            'output': command_output,
+                            'tool': 'shell'
+                        })
+            
+            if not executed_commands:
+                # If no Action Input found, try to extract any commands from the response
+                suggested_commands = vulnerability_info.get('suggestedCommands', [])
+                if suggested_commands:
+                    first_command = suggested_commands[0].get('command', '')
+                    if first_command:
+                        logger.debug(f"DEBUG: No Action Input found, executing first suggested command: {first_command}")
+                        shell_tool = create_shell_tool()
+                        command_output = shell_tool.func(first_command)
+                        
+                        executed_commands.append({
+                            'command': first_command,
+                            'output': command_output,
+                            'tool': 'shell'
+                        })
+            
+            # Create result similar to what AgentExecutor would return
+            result = {
+                'commands_executed': executed_commands,
+                'final_analysis': response_text,
+                'exploitation_attempts': len(executed_commands),
+                'vulnerability_info': vulnerability_info
+            }
+            
+        except Exception as e:
+            logger.error(f"DEBUG: Direct LLM call failed: {e}")
+            return None
         
-        # Extract comprehensive results from agent execution
-        final_answer = result.get('output', '')
-        intermediate_steps = result.get('intermediate_steps', [])
+        logger.debug(f"DEBUG: Direct LLM call completed")
+        logger.debug(f"DEBUG: Result keys: {list(result.keys())}")
         
-        logger.debug(f"DEBUG: Final answer from AI: {final_answer[:500]}...")
-        logger.debug(f"DEBUG: Number of intermediate steps: {len(intermediate_steps)}")
+        # The result is already in the format we need
+        executed_commands = result.get('commands_executed', [])
+        final_analysis = result.get('final_analysis', '')
         
-        # Analyze all executed commands and their results
-        executed_commands = []
-        for step in intermediate_steps:
-            if len(step) >= 2:
-                action = step[0]
-                observation = step[1]
-                if hasattr(action, 'tool_input'):
-                    executed_commands.append({
-                        'command': action.tool_input,
-                        'output': observation,
-                        'tool': getattr(action, 'tool', 'shell')
-                    })
+        logger.debug(f"DEBUG: Final analysis from AI: {final_analysis[:500]}...")
+        logger.debug(f"DEBUG: Number of executed commands: {len(executed_commands)}")
         
-        # Create simple result focused on what agent did and found
-        comprehensive_result = {
-            'commands_executed': executed_commands,
-            'final_analysis': final_answer,
-            'exploitation_attempts': len(executed_commands),
-            'vulnerability_info': vulnerability_info
-        }
+        for i, cmd in enumerate(executed_commands):
+            logger.debug(f"DEBUG: Command {i+1}: {cmd.get('command', 'N/A')}")
         
-        logger.debug(f"DEBUG: Comprehensive result: {len(executed_commands)} commands executed")
+        logger.debug(f"DEBUG: Direct approach result: {len(executed_commands)} commands executed")
         
-        return comprehensive_result
+        return result
         
     except Exception as e:
         logger.error(f"DEBUG: ReAct exploitation agent error: {e}")
@@ -467,291 +499,56 @@ Thought:{agent_scratchpad}"""
 # All static analysis functions removed - let AI handle everything intelligently!
 
 def main():
-    logger.debug(f"DEBUG: Starting ReAct agent...")
+    """Simplified main function that assumes LLM is always available"""
+    logger.debug("Starting ReAct agent...")
     
     try:
         # Read input
-        logger.debug(f"DEBUG: Reading input from stdin...")
+        logger.debug("Reading input from stdin...")
         raw = sys.stdin.read()
         payload = json.loads(raw or '{}')
         
-        logger.debug(f"DEBUG: Input payload keys: {list(payload.keys())}")
-        logger.debug(f"DEBUG: Payload: {json.dumps(payload, indent=2)[:500]}...")
+        logger.debug(f"Input payload keys: {list(payload.keys())}")
         
         # Load config
         config_path = os.path.join(os.path.dirname(__file__), '..', 'echidna.json')
-        logger.debug(f"DEBUG: Loading config from: {config_path}")
+        logger.debug(f"Loading config from: {config_path}")
         
         if not os.path.exists(config_path):
-            logger.error(f"DEBUG: Config file not found at {config_path}")
-            config = {}
-        else:
-            with open(config_path, 'r') as f:
-                config = json.load(f)
-            logger.debug(f"DEBUG: Config loaded successfully")
+            raise FileNotFoundError(f"Config file not found at {config_path}")
         
-        # Create LLM client
-        logger.debug(f"DEBUG: Creating LLM client...")
+        with open(config_path, 'r') as f:
+            config = json.load(f)
+        logger.debug("Config loaded successfully")
+        
+        # Create LLM client - assume it will always work
+        logger.debug("Creating LLM client...")
         llm = create_llm_client(config)
         
         if not llm:
-            logger.warning(f"DEBUG: No LLM available, executing all suggested commands directly")
-            # Execute ALL suggested commands directly without AI analysis
-            vuln_info = payload.get('vulnerabilityInfo', {})
-            suggested_commands = vuln_info.get('suggestedCommands', [])
-            
-            executed_commands = []
-            successful_commands = 0
-            failed_commands = 0
-            analysis_parts = []
-            
-            if suggested_commands:
-                analysis_parts.append(f"No LLM available, executing {len(suggested_commands)} suggested commands directly:")
-                
-                for i, cmd_info in enumerate(suggested_commands, 1):
-                    cmd = cmd_info.get('command', '')
-                    explanation = cmd_info.get('explanation', 'No explanation')
-                    
-                    if not cmd:
-                        continue
-                        
-                    try:
-                        logger.debug(f"DEBUG: Executing suggested command {i}: {cmd}")
-                        result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=30)
-                        
-                        output_parts = []
-                        if result.stdout:
-                            output_parts.append(f"STDOUT:\n{result.stdout}")
-                        if result.stderr:
-                            output_parts.append(f"STDERR:\n{result.stderr}")
-                        if result.returncode != 0:
-                            output_parts.append(f"EXIT_CODE: {result.returncode}")
-                        
-                        output = "\n".join(output_parts) if output_parts else "Command executed (no output)"
-                        
-                        executed_commands.append({
-                            'command': cmd,
-                            'output': output,
-                            'tool': 'direct'
-                        })
-                        
-                        if result.returncode == 0:
-                            successful_commands += 1
-                            analysis_parts.append(f"  Command {i} ({cmd}): SUCCESS")
-                            analysis_parts.append(f"  Purpose: {explanation}")
-                        else:
-                            failed_commands += 1
-                            analysis_parts.append(f"  Command {i} ({cmd}): FAILED (exit code {result.returncode})")
-                            analysis_parts.append(f"  Purpose: {explanation}")
-                            
-                    except Exception as e:
-                        failed_commands += 1
-                        executed_commands.append({
-                            'command': cmd,
-                            'output': f'ERROR: {str(e)}',
-                            'tool': 'direct'
-                        })
-                        analysis_parts.append(f"✗ Command {i} ({cmd}): ERROR - {str(e)}")
-                
-                final_analysis = "\n".join(analysis_parts)
-                
-                agent_result = {
-                    'commands_executed': executed_commands,
-                    'final_analysis': final_analysis,
-                    'exploitation_attempts': len(executed_commands),
-                    'vulnerability_info': vuln_info
-                }
-            else:
-                agent_result = {
-                    'commands_executed': [],
-                    'final_analysis': 'No LLM client available and no suggested commands provided',
-                    'exploitation_attempts': 0,
-                    'vulnerability_info': vuln_info
-                }
-        else:
-            logger.debug(f"DEBUG: LLM client created, proceeding with ReAct agent")
-            # Use ReAct agent with shell access
-            max_iterations = config.get('agentMaxIterations', 5)
-            logger.debug(f"DEBUG: Agent max iterations: {max_iterations}")
-            
-            try:
-                # Set a timeout for the entire agent execution
-                import signal
-                def timeout_handler(signum, frame):
-                    raise TimeoutError("Agent execution timed out")
-                
-                signal.signal(signal.SIGALRM, timeout_handler)
-                signal.alarm(25)  # 25 second timeout for agent execution (shorter to avoid Node.js timeout)
-                
-                agent_result = create_react_agent(
-                    llm, 
-                    payload.get('lastOutput', ''),
-                    payload.get('env', {}),
-                    payload.get('vulnerabilityInfo', {}), # Pass vulnerability info
-                    max_iterations
-                )
-                
-                signal.alarm(0)  # Cancel the alarm
-                
-            except TimeoutError:
-                logger.error("DEBUG: Agent execution timed out, executing all suggested commands directly")
-                # Fallback to direct execution of ALL suggested commands
-                vuln_info = payload.get('vulnerabilityInfo', {})
-                suggested_commands = vuln_info.get('suggestedCommands', [])
-                
-                executed_commands = []
-                successful_commands = 0
-                failed_commands = 0
-                analysis_parts = []
-                
-                if suggested_commands:
-                    analysis_parts.append(f"Agent timed out, executing {len(suggested_commands)} suggested commands directly:")
-                    
-                    for i, cmd_info in enumerate(suggested_commands, 1):
-                        cmd = cmd_info.get('command', '')
-                        explanation = cmd_info.get('explanation', 'No explanation')
-                        
-                        if not cmd:
-                            continue
-                            
-                        try:
-                            logger.debug(f"DEBUG: Executing suggested command {i}: {cmd}")
-                            result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=30)
-                            
-                            output_parts = []
-                            if result.stdout:
-                                output_parts.append(f"STDOUT:\n{result.stdout}")
-                            if result.stderr:
-                                output_parts.append(f"STDERR:\n{result.stderr}")
-                            if result.returncode != 0:
-                                output_parts.append(f"EXIT_CODE: {result.returncode}")
-                            
-                            output = "\n".join(output_parts) if output_parts else "Command executed (no output)"
-                            
-                            executed_commands.append({
-                                'command': cmd,
-                                'output': output,
-                                'tool': 'timeout_direct'
-                            })
-                            
-                            if result.returncode == 0:
-                                successful_commands += 1
-                                analysis_parts.append(f"✓ Command {i} ({cmd}): SUCCESS")
-                                analysis_parts.append(f"  Purpose: {explanation}")
-                            else:
-                                failed_commands += 1
-                                analysis_parts.append(f"✗ Command {i} ({cmd}): FAILED (exit code {result.returncode})")
-                                analysis_parts.append(f"  Purpose: {explanation}")
-                                
-                        except Exception as e:
-                            failed_commands += 1
-                            executed_commands.append({
-                                'command': cmd,
-                                'output': f'ERROR: {str(e)}',
-                                'tool': 'timeout_direct'
-                            })
-                            analysis_parts.append(f"✗ Command {i} ({cmd}): ERROR - {str(e)}")
-                    
-                    final_analysis = "\n".join(analysis_parts)
-                    final_analysis += f"\n\nSUMMARY: {successful_commands} successful, {failed_commands} failed"
-                    
-                    agent_result = {
-                        'commands_executed': executed_commands,
-                        'final_analysis': final_analysis,
-                        'exploitation_attempts': len(executed_commands),
-                        'vulnerability_info': vuln_info
-                    }
-                else:
-                    agent_result = {
-                        'commands_executed': [],
-                        'final_analysis': 'Agent execution timed out and no suggested commands available',
-                        'exploitation_attempts': 0,
-                        'vulnerability_info': vuln_info
-                    }
-            except Exception as e:
-                logger.error(f"DEBUG: Agent execution failed: {e}")
-                # Don't set agent_result to None, let it fall through to final fallback
-                agent_result = None
+            raise RuntimeError("Failed to create LLM client")
+        
+        logger.debug("LLM client created successfully, proceeding with ReAct agent")
+        
+        # Get agent configuration
+        max_iterations = config.get('agentMaxIterations', 5)
+        logger.debug(f"Agent max iterations: {max_iterations}")
+        
+        # Run ReAct agent
+        agent_result = create_react_agent(
+            llm, 
+            payload.get('lastOutput', ''),
+            payload.get('env', {}),
+            payload.get('vulnerabilityInfo', {}),
+            max_iterations
+        )
         
         if not agent_result:
-            logger.warning(f"DEBUG: Agent returned no result, executing suggested commands as final fallback")
-            # Final fallback: execute suggested commands directly
-            vuln_info = payload.get('vulnerabilityInfo', {})
-            suggested_commands = vuln_info.get('suggestedCommands', [])
-            
-            executed_commands = []
-            successful_commands = 0
-            failed_commands = 0
-            analysis_parts = []
-            
-            if suggested_commands:
-                analysis_parts.append(f"Agent execution failed, executing {len(suggested_commands)} suggested commands as final fallback:")
-                
-                for i, cmd_info in enumerate(suggested_commands, 1):
-                    cmd = cmd_info.get('command', '')
-                    explanation = cmd_info.get('explanation', 'No explanation')
-                    
-                    if not cmd:
-                        continue
-                        
-                    try:
-                        logger.debug(f"DEBUG: Final fallback - executing command {i}: {cmd}")
-                        result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=30)
-                        
-                        output_parts = []
-                        if result.stdout:
-                            output_parts.append(f"STDOUT:\n{result.stdout}")
-                        if result.stderr:
-                            output_parts.append(f"STDERR:\n{result.stderr}")
-                        if result.returncode != 0:
-                            output_parts.append(f"EXIT_CODE: {result.returncode}")
-                        
-                        output = "\n".join(output_parts) if output_parts else "Command executed (no output)"
-                        
-                        executed_commands.append({
-                            'command': cmd,
-                            'output': output,
-                            'tool': 'final_fallback'
-                        })
-                        
-                        if result.returncode == 0:
-                            successful_commands += 1
-                            analysis_parts.append(f"✓ Command {i} ({cmd}): SUCCESS")
-                            analysis_parts.append(f"  Purpose: {explanation}")
-                        else:
-                            failed_commands += 1
-                            analysis_parts.append(f"✗ Command {i} ({cmd}): FAILED (exit code {result.returncode})")
-                            analysis_parts.append(f"  Purpose: {explanation}")
-                            
-                    except Exception as e:
-                        failed_commands += 1
-                        executed_commands.append({
-                            'command': cmd,
-                            'output': f'ERROR: {str(e)}',
-                            'tool': 'final_fallback'
-                        })
-                        analysis_parts.append(f"✗ Command {i} ({cmd}): ERROR - {str(e)}")
-                
-                final_analysis = "\n".join(analysis_parts)
-                final_analysis += f"\n\nFINAL FALLBACK SUMMARY: {successful_commands} successful, {failed_commands} failed"
-                
-                agent_result = {
-                    'commands_executed': executed_commands,
-                    'final_analysis': final_analysis,
-                    'exploitation_attempts': len(executed_commands),
-                    'vulnerability_info': vuln_info
-                }
-            else:
-                agent_result = {
-                    'commands_executed': [],
-                    'final_analysis': 'Agent execution failed and no suggested commands available',
-                    'exploitation_attempts': 0,
-                    'vulnerability_info': vuln_info
-                }
+            raise RuntimeError("ReAct agent returned no result")
         
-        logger.debug(f"DEBUG: Agent execution completed")
+        logger.debug("Agent execution completed successfully")
         
-        # Generate simple response focused on what agent did and found
+        # Generate response
         result = {
             "execution_complete": True,
             "commands_executed": len(agent_result.get('commands_executed', [])),
@@ -761,21 +558,20 @@ def main():
             "allowed": True
         }
         
-        logger.debug(f"DEBUG: Returning simple execution result")
-        logger.debug(f"DEBUG: Commands executed: {result['commands_executed']}")
+        logger.debug(f"Returning execution result with {result['commands_executed']} commands")
         print(json.dumps(result))
         
     except Exception as e:
-        logger.error(f"DEBUG: Main function error: {e}")
+        logger.error(f"Main function error: {e}")
         import traceback
-        logger.debug(f"DEBUG: Full traceback:")
+        logger.debug("Full traceback:")
         traceback.print_exc(file=sys.stderr)
         
-        # Fallback on error
+        # Return error response
         result = {
             "execution_complete": False,
             "commands_executed": 0,
-            "final_analysis": "Error occurred during agent execution",
+            "final_analysis": f"Error occurred during agent execution: {str(e)}",
             "detailed_results": [],
             "error": str(e),
             "allowed": True
