@@ -136,6 +136,7 @@ function callReactAgent(aiData, provider, aiTerminalId) {
   const script = config.agent?.script || './commands/agent_react.py';
   const timeoutMs = config.agent?.timeoutMs || 60000;
   const pythonPath = config.agent?.pythonPath || 'python3';
+  const maxCommands = config.agent?.maxCommands || 1;
   
   // Fix the script path - resolve relative to the api_server directory, not routes
   const scriptPath = path.resolve(__dirname, '..', script);
@@ -144,7 +145,7 @@ function callReactAgent(aiData, provider, aiTerminalId) {
   const inputPayload = JSON.stringify({
     lastOutput: "Recent vulnerability analysis detected: " + (aiData.vulnerability || "Unknown vulnerability"),
     env: { currenthost: "default" }, // We don't have access to shell env here, use default
-    maxCommands: config.agent?.maxCommands || 1,
+    maxCommands: maxCommands,
     vulnerabilityInfo: {
       severity: aiData.severity,
       description: aiData.vulnerability,
@@ -163,18 +164,6 @@ function callReactAgent(aiData, provider, aiTerminalId) {
   let agentErr = '';
   const timer = setTimeout(() => {
     console.log(`[Agent] Timeout after ${timeoutMs}ms, killing process...`);
-    shell.executeCommand(aiTerminalId, `echo "[Agent] Analysis timed out, executing direct exploitation..."\n`, false);
-    
-    // Use the first suggested command from the AI analysis as fallback
-    if (aiData.commands && aiData.commands.length > 0) {
-      const exploitCmd = aiData.commands[0].command;
-      shell.executeCommand(aiTerminalId, `echo "[Agent] Executing AI-suggested command: ${exploitCmd}"\n`, false);
-      shell.executeCommand(aiTerminalId, `${exploitCmd}\n`, false);
-    } else {
-      shell.executeCommand(aiTerminalId, `echo "[Agent] No AI commands available, using basic reconnaissance..."\n`, false);
-      shell.executeCommand(aiTerminalId, `whoami\n`, false);
-    }
-    
     try { py.kill('SIGKILL'); } catch(e){}
   }, timeoutMs);
   
@@ -184,57 +173,70 @@ function callReactAgent(aiData, provider, aiTerminalId) {
   py.stdout.on('data', (d) => agentOut += d.toString());
   py.stderr.on('data', (d) => {
     agentErr += d.toString();
-    // Show agent progress in AI terminal using echo commands
-    if (d.toString().includes('DEBUG:')) {
-      const debugLines = d.toString().trim().split('\n');
-      debugLines.forEach(line => {
-        if (line.includes('LLM client created') || line.includes('Creating ReAct agent') || line.includes('Tools created')) {
-          const cleanMsg = line.replace(/.*DEBUG:\s*/, '').replace(/['"]/g, '\\"').replace(/\s+/g, ' ').trim();
-          if (cleanMsg) {
-            shell.executeCommand(aiTerminalId, `echo "[Agent] ${cleanMsg}"\n`, false);
-          }
-        }
-      });
-    }
+    // Debug output is captured but not displayed in terminal
   });
   
   py.on('close', (code) => {
     clearTimeout(timer);
-    console.log(`[Agent] ReactAgent process closed with code: ${code}`);
-    console.log(`[Agent] Output length: ${agentOut.length}, Error length: ${agentErr.length}`);
-    
-    // Update AI terminal with agent completion status
-    if (code === 0) {
-      shell.executeCommand(aiTerminalId, `echo "[Agent] Analysis completed successfully (exit code: ${code})"\n`, false);
-    } else {
-      shell.executeCommand(aiTerminalId, `echo "[Agent] Analysis failed (exit code: ${code})"\n`, false);
-    }
+    console.log(`[Agent] ReactAgent process completed with code: ${code}`);
     
     if (agentErr && agentErr.trim()) {
       console.error('[Agent][stderr]', agentErr);
     }
     
     if (agentOut && agentOut.trim()) {
-      console.log(`[Agent] Raw output: ${agentOut.substring(0, 200)}...`);
       try {
-        // Try to parse JSON response from ReactAgent
-        const result = JSON.parse(agentOut.trim());
-        const cmd = result.next_command;
-        const reason = result.reason || 'ReactAgent suggestion';
+        // Extract JSON from the end of the output (after all the LangChain verbose output)
+        const lines = agentOut.trim().split('\n');
+        let jsonLine = '';
         
-        if (cmd && result.allowed && cmd.length < 4096) {
-          console.log(`[Agent] Executing ReactAgent command: ${cmd}`);
-          shell.executeCommand(aiTerminalId, `echo "[Agent] ${reason}: ${cmd}"\n`, false);
-          shell.executeCommand(aiTerminalId, cmd + "\n", false);
+        // Look for the JSON response at the end of the output
+        for (let i = lines.length - 1; i >= 0; i--) {
+          const line = lines[i].trim();
+          if (line.startsWith('{') && line.includes('"execution_complete"')) {
+            jsonLine = line;
+            break;
+          }
+        }
+        
+        if (!jsonLine) {
+          throw new Error('No valid JSON response found in agent output');
+        }
+        
+        console.log(`[Agent] Extracted JSON: ${jsonLine.substring(0, 200)}...`);
+        
+        // Parse the comprehensive result from ReactAgent
+        const result = JSON.parse(jsonLine);
+        
+        if (result.execution_complete) {
+          console.log(`[Agent] Agent executed ${result.commands_executed} commands`);
+          console.log(`[Agent] Exploitation successful: ${result.exploitation_successful}`);
+          
+          // Display actual commands and their complete results in terminal
+          if (result.detailed_results && result.detailed_results.length > 0) {
+            result.detailed_results.forEach((cmdResult, index) => {
+              // Show the command as it would appear in a real terminal
+              shell.executeCommand(aiTerminalId, `${cmdResult.command}\n`, false);
+              // Show the complete output without formatting
+              if (cmdResult.output && cmdResult.output.trim()) {
+                shell.executeCommand(aiTerminalId, `${cmdResult.output}\n`, false);
+              }
+            });
+          }
+          
+          // Post simple summary to chat about what agent did and found
+          if (result.final_analysis && result.final_analysis.trim()) {
+            const simpleMessage = `Agent executed ${result.commands_executed} command(s) and found: ${result.final_analysis}`;
+            create("text", `ReactAgent-${provider}`, simpleMessage);
+            console.log(`[Agent] Posted findings to chat from ${provider}`);
+          }
+        } else {
+          if (result.error) {
+            console.error(`[Agent] Error: ${result.error}`);
+          }
         }
       } catch (parseErr) {
-        // Fallback: treat first line as command (backward compatibility)
-        const cmd = agentOut.split(/\r?\n/)[0].trim();
-        if (cmd && cmd.length < 4096) {
-          console.log(`[Agent] Executing ReactAgent fallback command: ${cmd}`);
-          shell.executeCommand(aiTerminalId, `echo "[Agent] executing: ${cmd}"\n`, false);
-          shell.executeCommand(aiTerminalId, cmd + "\n", false);
-        }
+        console.error(`[Agent] Failed to parse agent output: ${parseErr.message}`);
       }
     }
   });
@@ -258,8 +260,7 @@ function createCommandsFromAI(aiData, provider) {
       // Ensure shell exists for the AI terminal
       shell.create(aiTerminalId);
       
-      // Display initial message
-      shell.executeCommand(aiTerminalId, 'echo "[Agent] Starting analysis of CRITICAL vulnerability..."\n', false);
+      // Agent will start analysis - no initial message needed
       
       // Call ReactAgent with vulnerability information
       callReactAgent(aiData, provider, aiTerminalId);
@@ -307,15 +308,15 @@ async function analyzeWithOpenAI(topic) {
     const resp = await client.chat.completions.create({
       model: process.env.OPENAI_MODEL || config.openai?.model || "gpt-4o-mini",
       messages,
-      max_tokens: 3000, // Increased for complete JSON response
-      temperature: 0.3, // Lower temperature for more consistent JSON
+//      max_tokens: 3000, // Increased for complete JSON response
+//      temperature: 0.3, // Lower temperature for more consistent JSON
     });
     const content = resp.choices?.[0]?.message?.content || "";
     if (content) {
       // Parse the AI response and create commands
       const aiData = parseAIResponse(content, "openai");
       if (aiData) {
-        createCommandsFromAI(aiData, "openai");
+        createCommandsFromAI(aiData, "open-AI");
       }
     }
     return content ? `[openai] ${content}` : "";
