@@ -227,16 +227,20 @@ class Shell {
             const endPattern = /\r?\n?[^\r\n]*\$\s*$/;
             if (endPattern.test(output) && this.lastAnalyzedExecNo !== this.execNo) {
               const analyzedText = this.terminalOutput.replace(/\r?\n?[^\r\n]*\$\s*$/, "\n");
-              try {
-                const p = chats.analysis(analyzedText, false);
-                if (p && typeof p.then === 'function') {
-                  p.then((msg) => {
-                    console.log(`[Agent] AI analysis result: ${msg ? msg.substring(0, 200) : 'null'}...`);
-                    // AI analysis results are now handled directly in chats.js
-                    // ReactAgent is called immediately when CRITICAL vulnerabilities are detected
-                  }).catch(() => {});
-                }
-              } catch (e) { /* noop */ }
+              
+              // Skip analysis if the terminal output contains "ip addr" command
+              if (!this.terminalOutput.includes("ip addr")) {
+                try {
+                  const p = chats.analysis(analyzedText, false);
+                  if (p && typeof p.then === 'function') {
+                    p.then((msg) => {
+                      console.log(`[Agent] AI analysis result: ${msg ? msg.substring(0, 200) : 'null'}...`);
+                      // AI analysis results are now handled directly in chats.js
+                      // ReactAgent is called immediately when CRITICAL vulnerabilities are detected
+                    }).catch(() => {});
+                  }
+                } catch (e) { /* noop */ }
+              }
               this.lastAnalyzedExecNo = this.execNo;
             }
             logs.create(this.id, this.execNo, ++this.logSeqNo, this.command, status, output, new Date());

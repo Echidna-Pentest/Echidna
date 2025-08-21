@@ -71,7 +71,24 @@ class Chats {
 }
 
 // System prompt for role and format definition
-const SYSTEM_PROMPT = "You are a penetration test assistant. Your role is to analyze security findings and identify vulnerabilities that require immediate exploitation.\n\nResponse Format Rules:\n- ONLY respond when you find HIGH or CRITICAL severity vulnerabilities\n- For low-risk findings, informational output, or normal system behavior, respond with 'NONE'\n- When HIGH/CRITICAL vulnerability is found, respond in JSON format:\n\n{\n  \"severity\": \"HIGH\" or \"CRITICAL\",\n  \"vulnerability\": \"Clear description of the vulnerability and its impact\",\n  \"commands\": [\n    {\n      \"command\": \"specific exploitation command\",\n      \"explanation\": \"what this command exploits and expected outcome\"\n    }\n  ]\n}\n\nProvide exactly 3 exploitation commands that directly target the vulnerability.";
+const SYSTEM_PROMPT = `
+You analyze a pentester's terminal.
+
+Analyze ONLY outputs that clearly come from an attack command or a remote session. 
+
+Report ONLY HIGH/CRITICAL vulnerabilities. If no CRITICAL/HIGH vulnerabilities are found, reply exactly: NONE. If you find a vulnerability, provide 3 exploitation commands that directly target the vulnerability.
+
+When reporting, output ONLY this JSON (no extra text):
+{
+  "severity": "HIGH" | "CRITICAL",
+  "vulnerability": "short description & impact tied to the target",
+  "commands": [
+    {"command": "...", "explanation": "what is this command"},
+    {"command": "...", "explanation": "..."},
+    {"command": "...", "explanation": "..."}
+  ]
+}
+`;
 
 // postChat function removed - AI analysis results are handled via CandidateCommands only
 
@@ -224,11 +241,22 @@ function callReactAgent(aiData, provider, aiTerminalId) {
             });
           }
           
-          // Post simple summary to chat about what agent did and found
+          // Post detailed summary to chat about what agent did and found
           if (result.final_analysis && result.final_analysis.trim()) {
-            const simpleMessage = `Agent executed ${result.commands_executed} command(s) and found: ${result.final_analysis}`;
-            create("text", `ReactAgent-${provider}`, simpleMessage);
-            console.log(`[Agent] Posted findings to chat from ${provider}`);
+            let detailedMessage = `Agent executed ${result.commands_executed} command(s):\n\n`;
+            
+            // Add executed commands to the message
+            if (result.detailed_results && result.detailed_results.length > 0) {
+              result.detailed_results.forEach((cmdResult, index) => {
+                detailedMessage += `${index + 1}. ${cmdResult.command}\n`;
+              });
+              detailedMessage += `\nFindings: ${result.final_analysis}`;
+            } else {
+              detailedMessage += `Commands: (details not available)\nFindings: ${result.final_analysis}`;
+            }
+            
+            create("text", `ReactAgent-${provider}`, detailedMessage);
+            console.log(`[Agent] Posted detailed findings to chat from ${provider}`);
           }
         } else {
           if (result.error) {
@@ -302,7 +330,22 @@ async function analyzeWithOpenAI(topic) {
   const client = new OpenAIClient({ apiKey });
   const messages = [
     { role: "system", content: SYSTEM_PROMPT },
-    { role: "user", content: `Analyze the following console output for HIGH or CRITICAL security vulnerabilities that can be exploited.\n\nHIGH/CRITICAL vulnerabilities include:\n- Remote code execution opportunities\n- Authentication bypasses\n- Privilege escalation paths\n- SQL injection vulnerabilities\n- Exposed sensitive services (FTP with anonymous access, unprotected databases, etc.)\n- Default credentials on critical services\n- Buffer overflow possibilities\n- Directory traversal vulnerabilities\n\nOnly respond if you find serious vulnerabilities that require immediate exploitation attempts. Console output to analyze:\n\n${topic}` }
+    { role: "user", content: `Analyze the following attacking command output and find HIGH or CRITICAL security vulnerabilities that can be exploited.
+    
+    If you find a Critical or High vulnerability, provide up to 3 exploitation commands that directly target the vulnerability.
+
+    When reporting, output ONLY this JSON (no extra text):
+    {
+      "severity": "HIGH" | "CRITICAL",
+      "vulnerability": "short description & impact tied to the target",
+      "commands": [
+        {"command": "...", "explanation": "what is this command"},
+        {"command": "...", "explanation": "..."},
+        {"command": "...", "explanation": "..."}
+      ]
+    }
+
+    Console output to analyze:\n\n${topic}` }
   ];
   try {
     const resp = await client.chat.completions.create({

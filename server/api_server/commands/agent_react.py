@@ -97,10 +97,12 @@ def create_llm_client(config: Dict[str, Any]):
                     model=localai_config.get('model', 'auto'),
                     base_url=localai_config.get('baseUrl'),
                     api_key='sk-local',
-                    temperature=0.0,
-                    timeout=10,  # Add timeout for LocalAI connections
-                    streaming=False,  # Disable streaming to avoid stop parameter issues
-                    max_retries=1
+                    temperature=0.2,
+                    timeout=120,  # Increased timeout for LocalAI ReAct chains
+                    streaming=False,  # Disable streaming for ReAct compatibility
+                    max_retries=2,  # Allow more retries for stability
+                    request_timeout=120,  # HTTP request timeout
+                    max_tokens=4096  # Ensure enough tokens for ReAct reasoning
                 )
                 logger.debug(f"DEBUG: Local LLM client created successfully")
                 return client
@@ -201,297 +203,193 @@ def safe_command_check(cmd: str) -> bool:
     
     return len(cmd) < 1000
 
-def create_shell_tool():
-    """Create shell execution tool for the agent"""
-    from langchain.tools import Tool
-    
-    def execute_shell_command(command: str) -> str:
-        """Execute a shell command and return the output with exploitation analysis"""
+def build_shell_tool():
+    """Prefer the built-in ShellTool; fall back to @tool wrapper if unavailable."""
+    try:
+        # Try LangChain 0.2+ community package first
+        from langchain_community.tools.shell.tool import ShellTool
+        base_shell = ShellTool()
+        logger.debug("DEBUG: Using LangChain community ShellTool")
+    except ImportError:
         try:
-            # Safety check
-            if not safe_command_check(command):
-                return "ERROR: Command blocked for safety reasons"
+            # Try experimental package for older versions
+            from langchain_experimental.tools import ShellTool
+            base_shell = ShellTool()
+            logger.debug("DEBUG: Using LangChain experimental ShellTool")
+        except ImportError:
+            # Fallback to custom implementation
+            logger.debug("DEBUG: Using fallback custom shell tool")
+            from langchain.tools import tool
             
-            logger.debug(f"DEBUG: Executing exploitation command: {command}")
-            
-            # Execute command with timeout
-            result = subprocess.run(
-                command,
-                shell=True,
-                capture_output=True,
-                text=True,
-                timeout=60,  # Extended timeout for exploitation tools
-                cwd=os.path.expanduser("~")  # Run from home directory
-            )
-            
-            output = []
-            if result.stdout:
-                output.append(f"STDOUT:\n{result.stdout}")
-            if result.stderr:
-                output.append(f"STDERR:\n{result.stderr}")
-            if result.returncode != 0:
-                output.append(f"EXIT_CODE: {result.returncode}")
-            
-            command_output = "\n".join(output) if output else "Command executed successfully (no output)"
-            
-            logger.debug(f"DEBUG: Command completed.")
-            return command_output
-            
-        except subprocess.TimeoutExpired:
-            return "ERROR: Command timed out after 60 seconds"
+            # @tool("shell_command")
+            # def _fallback_shell(command: str) -> str:
+            #     """Execute shell commands for penetration testing and vulnerability exploitation."""
+            #     if not safe_command_check(command):
+            #         return "ERROR: Command blocked for safety reasons"
+            #     try:
+            #         result = subprocess.run(
+            #             command, shell=True, capture_output=True, text=True, timeout=60,
+            #             cwd=os.path.expanduser("~")
+            #         )
+            #         out = []
+            #         if result.stdout: 
+            #             out.append(f"STDOUT:\n{result.stdout}")
+            #         if result.stderr: 
+            #             out.append(f"STDERR:\n{result.stderr}")
+            #         if result.returncode != 0: 
+            #             out.append(f"EXIT_CODE: {result.returncode}")
+            #         return "\n".join(out) if out else "Command executed successfully (no output)"
+            #     except subprocess.TimeoutExpired:
+            #         return "ERROR: Command timed out after 60 seconds"
+            #     except Exception as e:
+            #         return f"ERROR: {str(e)}"
+            # return [_fallback_shell]
+    
+    # If we have ShellTool, wrap it with safety guard and ensure consistent naming
+    from langchain.tools import tool
+    
+    @tool("shell_command")
+    def guarded_shell(command: str) -> str:
+        """Execute shell commands for penetration testing and vulnerability exploitation."""
+        if not safe_command_check(command):
+            return "ERROR: Command blocked for safety reasons"
+        try:
+            return base_shell.run(command)
         except Exception as e:
             return f"ERROR: {str(e)}"
     
-    return Tool(
-        name="shell",
-        description="Execute shell commands for penetration testing and exploitation. Output will be provided to AI for analysis.",
-        func=execute_shell_command
-    )
+    return [guarded_shell]
 
 
 
-def create_react_agent(llm, last_output: str, env: Dict[str, Any], vulnerability_info: Dict[str, Any] = None, max_iterations: int = 5) -> Optional[Dict[str, Any]]:
-    """Create and run ReAct agent with shell access and exploitation goals"""
-    logger.debug(f"DEBUG: Creating ReAct agent with exploitation focus...")
+
+
+def run_langchain_react_agent(llm, last_output: str, env: Dict[str, Any], vulnerability_info: Dict[str, Any] = None, max_iterations: int = 5) -> Optional[Dict[str, Any]]:
+    """Run proper LangChain ReAct agent using create_react_agent + AgentExecutor"""
+    logger.debug(f"DEBUG: Starting LangChain ReAct Agent")
     logger.debug(f"DEBUG: LLM client: {type(llm).__name__ if llm else 'None'}")
     logger.debug(f"DEBUG: Max iterations: {max_iterations}")
-    logger.debug(f"DEBUG: Terminal output length: {len(last_output)} chars")
-    logger.debug(f"DEBUG: Vulnerability info provided: {'Yes' if vulnerability_info else 'No'}")
     
     try:
+        # Import proper ReAct agent components
         from langchain.agents import create_react_agent, AgentExecutor
-        from langchain.prompts import PromptTemplate
-        from langchain.schema import SystemMessage, HumanMessage
+        from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
         
-        logger.debug(f"DEBUG: LangChain imports successful")
-        
-        # Create shell tool
-        shell_tool = create_shell_tool()
-        tools = [shell_tool]
-        
-        logger.debug(f"DEBUG: Tools created: {[tool.name for tool in tools]}")
-        
-        # Format vulnerability context for exploitation
-        vulnerability_context = "No specific vulnerability information available."
-        exploitation_targets = []
-        exploitation_status = "RECONNAISSANCE_PHASE"
-        
-        if vulnerability_info:
-            # Enhanced vulnerability analysis
-            vuln_severity = vulnerability_info.get('severity', 'Unknown').upper()
-            vuln_description = vulnerability_info.get('description', 'Not available')
-            vuln_provider = vulnerability_info.get('provider', 'Unknown')
-            
-            suggested_commands = vulnerability_info.get('suggestedCommands', [])
-            logger.debug(f"DEBUG: Found {len(suggested_commands)} suggested commands")
-            for idx, cmd in enumerate(suggested_commands):
-                logger.debug(f"DEBUG: Command {idx + 1}: {cmd}")
-            
-            if suggested_commands:
-                context_parts = [f"Available commands:"]
-                for i, cmd in enumerate(suggested_commands[:3], 1):  # Top 3 commands only
-                    command = cmd.get('command', 'Unknown')
-                    context_parts.append(f"{i}. {command}")
-                    
-                    exploitation_targets.append({
-                        "command": command,
-                        "explanation": cmd.get('explanation', 'No explanation'),
-                        "priority": i,
-                        "confidence": cmd.get('confidence', 0.5),
-                        "priority_score": 0.75,
-                        "vulnerability_severity": vuln_severity
-                    })
-                
-                exploitation_status = "ACTIVE_EXPLOITATION_PHASE"
-            else:
-                context_parts = ["No commands available"]
-            
-            vulnerability_context = "\n".join(context_parts)
-        else:
-            # No specific vulnerability, focus on discovery
-            context_parts = [
-                "RECONNAISSANCE AND DISCOVERY PHASE:",
-                "- No specific vulnerabilities identified yet",
-                "- Focus on service enumeration and vulnerability scanning",
-                "- Look for common misconfigurations and weak services",
-                "- Prepare for exploitation once vulnerabilities are found"
-            ]
-            vulnerability_context = "\n".join(context_parts)
-            exploitation_status = "RECONNAISSANCE_PHASE"
-        
-        logger.debug(f"DEBUG: Exploitation status: {exploitation_status}")
-        logger.debug(f"DEBUG: Formatted vulnerability context: {vulnerability_context[:300]}...")
-        logger.debug(f"DEBUG: Exploitation targets: {len(exploitation_targets)}")
-        
-        if exploitation_targets:
-            logger.debug(f"DEBUG: Top exploitation targets:")
-            for i, target in enumerate(exploitation_targets[:3], 1):
-                logger.debug(f"  {i}. {target['command']} (score: {target['priority_score']:.2f})")
-        
-        # *** EARLY DEBUG: Print prompts here before LLM creation ***
-        logger.debug("="*80)
-        logger.debug("EARLY DEBUG - VULNERABILITY CONTEXT:")
-        logger.debug(vulnerability_context)
-        logger.debug("="*80)
-        
-        # Create system prompt with few-shot example
-        system_prompt = """You have access to tools: {tools}
-
-You MUST follow this exact format:
-Question: What command should I run?
-Thought: I need to pick a command from the list
-Action: shell
-Action Input: [exact command]
-Observation: [result]
-Thought: [analysis]
-Final Answer: [summary]
-
-Example:
-Question: What command should I run?
-Thought: I need to execute the first command from the list
-Action: shell
-Action Input: whoami
-Observation: root
-Thought: Command executed successfully, I am root
-Final Answer: Successfully executed whoami command and confirmed root access"""
-
-        # Create user prompt with mandatory first action
-        user_prompt_template = """Commands to test:
-{vulnerability_context}
-
-Available tools: {tool_names}
-
-MANDATORY FIRST ACTION:
-On your first turn, you MUST output exactly:
-Action: shell
-Action Input: <the top-1 command from the list above>
-Then wait for Observation before any further thoughts.
-
-Question: What command should I run?
-Thought:{agent_scratchpad}"""
-
-        # *** EARLY DEBUG: Print system and user prompts here before any LLM operations ***
-        logger.debug("="*80)
-        logger.debug("EARLY DEBUG - SYSTEM PROMPT:")
-        logger.debug(system_prompt)
-        logger.debug("="*80)
-        logger.debug("EARLY DEBUG - USER PROMPT TEMPLATE:")
-        logger.debug(user_prompt_template)
-        logger.debug("="*80)
-
-        # Combine system and user prompts
-        full_template = system_prompt + "\n\n" + user_prompt_template
-        prompt = PromptTemplate.from_template(full_template)
-        
-        # Debug: Print the prompts for debugging
-        logger.debug("="*80)
-        logger.debug("SYSTEM PROMPT:")
-        logger.debug(system_prompt)
-        logger.debug("="*80)
-        logger.debug("USER PROMPT TEMPLATE:")
-        logger.debug(user_prompt_template)
-        logger.debug("="*80)
-        logger.debug("VULNERABILITY CONTEXT:")
-        logger.debug(vulnerability_context)
-        logger.debug("="*80)
-        
-        logger.debug(f"DEBUG: Exploitation-focused prompt template created")
-        
-        # Since LangChain ReAct agent has streaming issues with LocalAI, 
-        # let's use direct LLM calls to avoid the stop parameter problem
-        logger.debug(f"DEBUG: Using direct LLM approach to avoid streaming issues")
-        
-        # Format the complete prompt manually
-        final_prompt = system_prompt.replace("{tools}", str([tool.name for tool in tools])) + "\n\n" + \
-                      user_prompt_template.replace("{vulnerability_context}", vulnerability_context) \
-                                          .replace("{tool_names}", str([tool.name for tool in tools])) \
-                                          .replace("{agent_scratchpad}", "")
-        
-        logger.debug("="*80)
-        logger.debug("FINAL PROMPT TO LLM:")
-        logger.debug(final_prompt)
-        logger.debug("="*80)
-        
+        # Add stop tokens for LocalAI/LM Studio compatibility
         try:
-            # Make direct LLM call without streaming
-            from langchain.schema import HumanMessage
-            response = llm.invoke([HumanMessage(content=final_prompt)])
-            logger.debug(f"DEBUG: LLM Response: {response.content}")
-            
-            # Parse the response to extract Action and Action Input
-            response_text = response.content
-            executed_commands = []
-            
-            # Look for Action: shell and Action Input: patterns
-            lines = response_text.split('\n')
-            current_command = None
-            
-            for line in lines:
-                line = line.strip()
-                if line.startswith('Action Input:'):
-                    current_command = line[len('Action Input:'):].strip()
-                    if current_command and len(current_command) > 0:
-                        # Execute the command using our shell tool
-                        logger.debug(f"DEBUG: Executing command: {current_command}")
-                        shell_tool = create_shell_tool()
-                        command_output = shell_tool.func(current_command)
-                        
-                        executed_commands.append({
-                            'command': current_command,
-                            'output': command_output,
-                            'tool': 'shell'
-                        })
-            
-            if not executed_commands:
-                # If no Action Input found, try to extract any commands from the response
-                suggested_commands = vulnerability_info.get('suggestedCommands', [])
-                if suggested_commands:
-                    first_command = suggested_commands[0].get('command', '')
-                    if first_command:
-                        logger.debug(f"DEBUG: No Action Input found, executing first suggested command: {first_command}")
-                        shell_tool = create_shell_tool()
-                        command_output = shell_tool.func(first_command)
-                        
-                        executed_commands.append({
-                            'command': first_command,
-                            'output': command_output,
-                            'tool': 'shell'
-                        })
-            
-            # Create result similar to what AgentExecutor would return
-            result = {
-                'commands_executed': executed_commands,
-                'final_analysis': response_text,
-                'exploitation_attempts': len(executed_commands),
-                'vulnerability_info': vulnerability_info
-            }
-            
+            llm = llm.bind(stop=["\nObservation:", "Observation:"])
+            logger.debug("DEBUG: Added stop tokens for ReAct parsing")
         except Exception as e:
-            logger.error(f"DEBUG: Direct LLM call failed: {e}")
-            return None
+            logger.debug(f"DEBUG: Could not bind stop tokens: {e}")
+
+        # --- Tool preparation (official ShellTool or fallback) ---
+        tools = build_shell_tool()
+        logger.debug(f"DEBUG: Created {len(tools)} tools: {[t.name for t in tools]}")
+
+        # --- Build vulnerability context (optional) ---
+        vuln_ctx = ""
+        if vulnerability_info:
+            cmds = vulnerability_info.get("suggestedCommands", [])
+            cmd_list = [c.get("command", str(c)) if isinstance(c, dict) else str(c) for c in cmds]
+            vuln_ctx = (
+                "VULNERABILITY CONTEXT:\n"
+                f"- Severity: {vulnerability_info.get('severity','Unknown')}\n"
+                f"- Description: {vulnerability_info.get('description','N/A')}\n"
+                f"- Suggested Commands: {cmd_list}\n"
+            )
+
+        prompt = ChatPromptTemplate.from_messages([
+            ("system",
+             "You are a penetration testing agent using the ReAct pattern.\n"
+             "You have access to these tools: {tools}\n"
+             "Tool names: {tool_names}\n\n"
+             "Follow this EXACT format, repeating as needed:\n"
+             "Thought: <what you will do next>\n"
+             "Action: shell_command\n"
+             "Action Input: <ONLY the raw shell command, no quotes, no markdown>\n"
+             "Observation: <result will be inserted by the system>\n\n"
+             "Rules:\n"
+             "- Start with Thought.\n"
+             "- Action must be exactly 'shell_command' (from available tools: {tool_names}).\n"
+             "- Action Input must be ONLY the command string (no backticks / code fences / JSON).\n"
+             "- Never output code fences or JSON anywhere.\n"
+             "- After each Observation, continue with another Thought.\n"
+             "- When finished:\n"
+             "Thought: I now have enough information to provide my final analysis\n"
+             "Final Answer: <concise summary>\n\n"
+             "Example step:\n"
+             "Thought: Check if the target FTP port is reachable\n"
+             "Action: shell_command\n"
+             "Action Input: nc -zv 192.0.2.10 21\n"
+             "Observation: <...>"),
+            ("human",
+             "Context:\n{vuln_ctx}\n"
+             "LAST TERMINAL OUTPUT:\n{last_output}\n\n"
+             "Goal:\n- Validate the finding methodically and report a concise final analysis.\n"
+             "Begin now."),
+            ("ai", "{agent_scratchpad}"),
+        ])
+
+        # --- ReAct Agent construction ---
+        agent = create_react_agent(llm, tools, prompt)
+        executor = AgentExecutor(
+            agent=agent,
+            tools=tools,
+            return_intermediate_steps=True,
+            handle_parsing_errors=True,
+            max_iterations=max_iterations,
+            early_stopping_method="generate",
+            verbose=True,
+        )
+
+        # --- Execution ---
+        logger.debug("DEBUG: Starting LangChain ReAct agent execution...")
+        logger.debug("="*80)
+        logger.debug(f"VULNERABILITY CONTEXT: {vuln_ctx}")
+        logger.debug(f"LAST OUTPUT: {last_output[:200]}...")
+        logger.debug("="*80)
         
-        logger.debug(f"DEBUG: Direct LLM call completed")
-        logger.debug(f"DEBUG: Result keys: {list(result.keys())}")
+        res = executor.invoke({
+            "input": "",  # human message is complete in template
+            "vuln_ctx": vuln_ctx,
+            "last_output": last_output,
+        })
+        logger.debug("DEBUG: ReAct agent execution completed")
+        logger.debug(f"DEBUG: Result keys: {list(res.keys())}")
+
+        final_text = res.get("output", "").strip()
+        executed_commands = []
+        intermediate_steps = res.get("intermediate_steps", [])
+        logger.debug(f"DEBUG: Found {len(intermediate_steps)} intermediate steps")
         
-        # The result is already in the format we need
-        executed_commands = result.get('commands_executed', [])
-        final_analysis = result.get('final_analysis', '')
+        for idx, (action, observation) in enumerate(intermediate_steps, 1):
+            logger.debug(f"DEBUG: Step {idx}: action.tool = {getattr(action, 'tool', 'N/A')}")
+            if getattr(action, "tool", "") == "shell_command":
+                cmd = action.tool_input if isinstance(action.tool_input, str) else str(action.tool_input)
+                executed_commands.append({
+                    "step": idx,
+                    "tool": "shell_command",
+                    "command": cmd,
+                    "output": observation,
+                })
+                logger.debug(f"DEBUG: Captured command {idx}: {cmd[:100]}...")
+
+        agent_result = {
+            "commands_executed": executed_commands,
+            "final_analysis": final_text,
+            "exploitation_attempts": len(executed_commands),
+            "vulnerability_info": vulnerability_info or {},
+            "total_steps": len(intermediate_steps),
+        }
         
-        logger.debug(f"DEBUG: Final analysis from AI: {final_analysis[:500]}...")
-        logger.debug(f"DEBUG: Number of executed commands: {len(executed_commands)}")
-        
-        for i, cmd in enumerate(executed_commands):
-            logger.debug(f"DEBUG: Command {i+1}: {cmd.get('command', 'N/A')}")
-        
-        logger.debug(f"DEBUG: Direct approach result: {len(executed_commands)} commands executed")
-        
-        return result
-        
+        logger.debug(f"DEBUG: LangChain ReAct agent completed with {len(executed_commands)} commands executed")
+        return agent_result
+
     except Exception as e:
-        logger.error(f"DEBUG: ReAct exploitation agent error: {e}")
+        logger.error(f"DEBUG: LangChain ReAct agent execution failed: {e}")
         import traceback
-        logger.debug(f"DEBUG: Full traceback:")
-        traceback.print_exc(file=sys.stderr)
+        logger.debug("Full traceback:")
+        traceback.print_exc()
         return None
 
 
@@ -531,11 +429,11 @@ def main():
         logger.debug("LLM client created successfully, proceeding with ReAct agent")
         
         # Get agent configuration
-        max_iterations = config.get('agentMaxIterations', 5)
+        max_iterations = config.get('agentMaxIterations', 9)
         logger.debug(f"Agent max iterations: {max_iterations}")
         
-        # Run ReAct agent
-        agent_result = create_react_agent(
+        # Run REAL LangChain ReAct agent
+        agent_result = run_langchain_react_agent(
             llm, 
             payload.get('lastOutput', ''),
             payload.get('env', {}),
