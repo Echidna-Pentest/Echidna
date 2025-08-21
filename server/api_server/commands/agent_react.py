@@ -221,29 +221,29 @@ def build_shell_tool():
             logger.debug("DEBUG: Using fallback custom shell tool")
             from langchain.tools import tool
             
-            # @tool("shell_command")
-            # def _fallback_shell(command: str) -> str:
-            #     """Execute shell commands for penetration testing and vulnerability exploitation."""
-            #     if not safe_command_check(command):
-            #         return "ERROR: Command blocked for safety reasons"
-            #     try:
-            #         result = subprocess.run(
-            #             command, shell=True, capture_output=True, text=True, timeout=60,
-            #             cwd=os.path.expanduser("~")
-            #         )
-            #         out = []
-            #         if result.stdout: 
-            #             out.append(f"STDOUT:\n{result.stdout}")
-            #         if result.stderr: 
-            #             out.append(f"STDERR:\n{result.stderr}")
-            #         if result.returncode != 0: 
-            #             out.append(f"EXIT_CODE: {result.returncode}")
-            #         return "\n".join(out) if out else "Command executed successfully (no output)"
-            #     except subprocess.TimeoutExpired:
-            #         return "ERROR: Command timed out after 60 seconds"
-            #     except Exception as e:
-            #         return f"ERROR: {str(e)}"
-            # return [_fallback_shell]
+            @tool("shell_command")
+            def _fallback_shell(command: str) -> str:
+                """Execute shell commands for penetration testing and vulnerability exploitation."""
+                if not safe_command_check(command):
+                    return "ERROR: Command blocked for safety reasons"
+                try:
+                    result = subprocess.run(
+                        command, shell=True, capture_output=True, text=True, timeout=60,
+                        cwd=os.path.expanduser("~")
+                    )
+                    out = []
+                    if result.stdout: 
+                        out.append(f"STDOUT:\n{result.stdout}")
+                    if result.stderr: 
+                        out.append(f"STDERR:\n{result.stderr}")
+                    if result.returncode != 0: 
+                        out.append(f"EXIT_CODE: {result.returncode}")
+                    return "\n".join(out) if out else "Command executed successfully (no output)"
+                except subprocess.TimeoutExpired:
+                    return "ERROR: Command timed out after 60 seconds"
+                except Exception as e:
+                    return f"ERROR: {str(e)}"
+            return [_fallback_shell]
     
     # If we have ShellTool, wrap it with safety guard and ensure consistent naming
     from langchain.tools import tool
@@ -325,7 +325,8 @@ def run_langchain_react_agent(llm, last_output: str, env: Dict[str, Any], vulner
             ("human",
              "Context:\n{vuln_ctx}\n"
              "LAST TERMINAL OUTPUT:\n{last_output}\n\n"
-             "Goal:\n- Validate the finding methodically and report a concise final analysis.\n"
+#             "Goal:\n- Validate the finding methodically and report a concise final analysis.\n"
+             "Goal:\n- Validate the suggested commands works or not and report a concise final analysis.\n"
              "Begin now."),
             ("ai", "{agent_scratchpad}"),
         ])
@@ -345,8 +346,9 @@ def run_langchain_react_agent(llm, last_output: str, env: Dict[str, Any], vulner
         # --- Execution ---
         logger.debug("DEBUG: Starting LangChain ReAct agent execution...")
         logger.debug("="*80)
-        logger.debug(f"VULNERABILITY CONTEXT: {vuln_ctx}")
-        logger.debug(f"LAST OUTPUT: {last_output[:200]}...")
+#        logger.debug(f"VULNERABILITY CONTEXT: {vuln_ctx}")
+#        logger.debug(f"LAST OUTPUT: {last_output[:200]}...")
+        logger.debug(f"prompt: {prompt}")
         logger.debug("="*80)
         
         res = executor.invoke({

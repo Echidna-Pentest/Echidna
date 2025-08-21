@@ -13,6 +13,17 @@ const username = process.env.USER;
 const promptname = username + "@ECHIDNA$"
 
 /**
+ * Get terminal name by terminal ID
+ * @param {number} terminalId 
+ * @returns {string} terminal name or empty string if not found
+ */
+function getTerminalName(terminalId) {
+  const allTerminals = terminals.getAll();
+  const terminal = allTerminals.find(t => t.id == terminalId);
+  return terminal ? terminal.name : '';
+}
+
+/**
  * @type {object}
  */
 let _shells = {};
@@ -228,8 +239,9 @@ class Shell {
             if (endPattern.test(output) && this.lastAnalyzedExecNo !== this.execNo) {
               const analyzedText = this.terminalOutput.replace(/\r?\n?[^\r\n]*\$\s*$/, "\n");
               
-              // Skip analysis if the terminal output contains "ip addr" command
-              if (!this.terminalOutput.includes("ip addr")) {
+              // Skip analysis if the terminal output contains "ip addr" command or if terminal name is "AI"
+              const terminalName = getTerminalName(this.id);
+              if (!this.terminalOutput.includes("ip addr") && terminalName !== "AI") {
                 try {
                   const p = chats.analysis(analyzedText, false);
                   if (p && typeof p.then === 'function') {
