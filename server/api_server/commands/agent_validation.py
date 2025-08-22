@@ -276,6 +276,7 @@ def run_validation_agent(llm, commands_to_validate: List[str], max_iterations: i
         # Create prompt for command validation
         prompt = ChatPromptTemplate.from_messages([
             ("system", 
+             "You are a penetration testing agent.\n"
              "You validate whether suggested penetration testing commands work correctly by executing them directly.\n\n"
              "Available tools: {tools}\n"
              "Tool names: {tool_names}\n\n"
@@ -286,18 +287,20 @@ def run_validation_agent(llm, commands_to_validate: List[str], max_iterations: i
              "For each command:\n"
              "1) Execute the suggested command directly using shell_command\n"
              "2) Analyze the output to determine if it worked as expected for penetration testing\n"
-             "3) Report whether the command is functional and appropriate for pentesting\n\n"
-             "IMPORTANT: You may execute penetration testing commands, but be responsible.\n"
+#             "3) Report whether the command is functional and appropriate for pentesting\n\n"
+#             "IMPORTANT: You may execute penetration testing commands, but be responsible.\n"
              "Analyze command outputs to determine success/failure and pentesting effectiveness.\n"
-             "Example: For 'nmap -sV target', call shell_command with commands=\"nmap -sV target\""),
+             "Example: For 'nmap -sV target', call shell_command with commands=\"nmap -sV target\""
+             "**IMPORTANT: Keep all responses concise.**"),
             ("human", 
              "Execute and validate the following penetration testing commands:\n{commands_list}\n\n"
              "For each command, run it directly using the shell_command tool and analyze the output to determine:\n"
              "- Did the command execute successfully?\n"
              "- Does the output indicate it's working for penetration testing?\n"
-             "- Is the command functional and appropriate?\n\n"
+             "- Is the command option appropriate?\n\n"
              "Remember: Call shell_command(commands=\"actual_command_here\") for each command.\n"
-             "Report: command execution result, output analysis, verdict (Functional/Non-functional)."),
+             "Report: command execution result, output analysis, verdict (Functional/Non-functional)."
+             "**IMPORTANT: Keep all responses concise.**"),
             MessagesPlaceholder("agent_scratchpad"),
         ])
         
@@ -505,10 +508,6 @@ def main():
             else:
                 commands_to_validate.append(str(cmd))
         
-        if not commands_to_validate:
-            # If no specific commands provided, create some generic validation
-            commands_to_validate = ['nmap', 'nc', 'curl', 'wget', 'ssh']
-            logger.debug("No specific commands provided, validating common security tools")
         
         logger.debug(f"Commands to validate: {commands_to_validate}")
         

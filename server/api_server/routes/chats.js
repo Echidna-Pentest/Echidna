@@ -76,11 +76,11 @@ You analyze a pentester's terminal.
 
 Analyze ONLY outputs that clearly come from an attack command or a remote session. 
 
-Report ONLY CRITICAL/HIGH vulnerabilities. If no CRITICAL/HIGH vulnerabilities are found, reply exactly: NONE. If you find a vulnerability, provide up to 2 exploitation commands that directly target the vulnerability.
+Report ONLY CRITICAL vulnerabilities. If no CRITICAL vulnerabilities are found, reply exactly: NONE. If you find a vulnerability, provide up to 2 exploitation commands that directly target the vulnerability.
 
 When reporting, output ONLY this JSON (no extra text):
 {
-  "severity": "CRITICAL" | "HIGH",
+  "severity": "CRITICAL",
   "vulnerability": "short description & impact tied to the target",
   "commands": [
     {"command": "...", "explanation": "what is this command"},
@@ -112,8 +112,9 @@ function parseAIResponse(content, provider) {
     console.log(`[Debug] ${provider} parsed JSON severity: ${jsonData.severity}`);
     
     // Check if severity is HIGH or CRITICAL
-    if (!jsonData.severity || !['HIGH', 'CRITICAL'].includes(jsonData.severity.toUpperCase())) {
-      console.log(`[Chats] ${provider}: Vulnerability severity not HIGH/CRITICAL - skipping`);
+//    if (!jsonData.severity || !['HIGH', 'CRITICAL'].includes(jsonData.severity.toUpperCase())) {
+    if (!jsonData.severity || !['CRITICAL'].includes(jsonData.severity.toUpperCase())) {
+        console.log(`[Chats] ${provider}: Vulnerability severity not HIGH/CRITICAL - skipping`);
       return null;
     }
     
@@ -166,8 +167,13 @@ function callValidationAgent(aiData, provider, aiTerminalId) {
     }
   });
   
-  console.log(`[ValidationAgent] Spawning ValidationAgent: ${pythonPath} ${scriptPath} with timeout ${timeoutMs}ms`);
-  const py = spawn(pythonPath, [scriptPath], { 
+  // Use virtual environment Python if available
+  const venvPython = path.resolve(__dirname, '..', 'venv', 'bin', 'python3');
+  const fs = require('fs');
+  const actualPythonPath = fs.existsSync(venvPython) ? venvPython : pythonPath;
+  
+  console.log(`[ValidationAgent] Spawning ValidationAgent: ${actualPythonPath} ${scriptPath} with timeout ${timeoutMs}ms`);
+  const py = spawn(actualPythonPath, [scriptPath], { 
     cwd: path.resolve(__dirname, '..'), 
     env: process.env 
   });
@@ -223,23 +229,33 @@ function callValidationAgent(aiData, provider, aiTerminalId) {
         if (result.validation_complete) {
           console.log(`[ValidationAgent] Agent validated ${result.commands_validated} commands`);
           
-          // Display validation results in terminal
-          let validationMessage = `Command Validation Results:\n`;
-          validationMessage += `Validated ${result.commands_validated} commands\n\n`;
-          
+          // Display validation results in terminal - show only commands and their actual output
           if (result.detailed_validation && result.detailed_validation.length > 0) {
             result.detailed_validation.forEach((validation, index) => {
-              validationMessage += `${index + 1}. ${validation.command_checked}\n`;
-              validationMessage += `   Result: ${validation.validation_result}\n\n`;
+              // Simulate terminal command execution
+              setTimeout(() => {
+                // Show the command being executed (as if user typed it)
+                shell.executeCommand(aiTerminalId, validation.command_checked, true);
+                
+                // Show the actual command output
+                if (validation.validation_result && validation.validation_result.trim()) {
+                  // Clean up the output - remove our formatting and show raw command output
+                  let cleanOutput = validation.validation_result;
+                  
+                  // Remove common prefixes that we might have added
+                  cleanOutput = cleanOutput.replace(/^STDOUT:\s*/gm, '');
+                  cleanOutput = cleanOutput.replace(/^STDERR:\s*/gm, '');
+                  cleanOutput = cleanOutput.replace(/Return code:\s*\d+\s*$/gm, '');
+                  cleanOutput = cleanOutput.trim();
+                  
+                  // Add the output if there's any
+                  if (cleanOutput) {
+                    shell.executeCommand(aiTerminalId, cleanOutput + '\n', false);
+                  }
+                }
+              }, index * 500); // Small delay between commands for better UX
             });
           }
-          
-          if (result.validation_summary) {
-            validationMessage += `Summary: ${result.validation_summary}\n`;
-          }
-          
-          // Show validation results in terminal
-          shell.executeCommand(aiTerminalId, validationMessage, false);
           
           // Post validation summary to chat
           if (result.validation_summary && result.validation_summary.trim()) {
@@ -435,7 +451,7 @@ function createCommandsFromAI(aiData, provider) {
     }
 
     const commandConfig = {
-      name: `Exploit (${provider.toUpperCase()}) ${index + 1}: ${cmdData.explanation.substring(0, 50)}${cmdData.explanation.length > 50 ? '...' : ''}`,
+      name: `Exploit (${provider.toUpperCase()}) ${index + 1}: ${cmdData.explanation}`,
       template: cmdData.command,
       pattern: ".*", // Match any command input for exploitation
       group: provider,
@@ -457,13 +473,13 @@ async function analyzeWithOpenAI(topic) {
   const client = new OpenAIClient({ apiKey });
   const messages = [
     { role: "system", content: SYSTEM_PROMPT },
-    { role: "user", content: `Analyze the following attacking command output and find HIGH or CRITICAL security vulnerabilities that can be exploited.
+    { role: "user", content: `Analyze the following attacking command output and find CRITICAL security vulnerabilities that can be exploited.
     
-    If you find a Critical or High vulnerability, provide up to 1 exploitation commands that directly target the vulnerability.
+    If you find a Critical vulnerability, provide up to 1 exploitation commands that directly target the vulnerability.
 
     When reporting, output ONLY this JSON (no extra text):
     {
-      "severity": "HIGH" | "CRITICAL",
+      "severity": "CRITICAL",
       "vulnerability": "short description & impact tied to the target",
       "commands": [
         {"command": "...", "explanation": "what is this command"},
@@ -502,13 +518,13 @@ async function analyzeWithLocal(topic) {
   const client = new OpenAIClient({ apiKey, baseURL });
   const messages = [
     { role: "system", content: SYSTEM_PROMPT },
-    { role: "user", content: `Analyze the following attacking command output and find HIGH or CRITICAL security vulnerabilities that can be exploited.
+    { role: "user", content: `Analyze the following attacking command output and find CRITICAL security vulnerabilities that can be exploited.
     
-    If you find a Critical or High vulnerability, provide up to 2 exploitation commands that directly target the vulnerability.
+    If you find a Critical vulnerability, provide up to 2 exploitation commands that directly target the vulnerability.
 
     When reporting, output ONLY this JSON (no extra text):
     {
-      "severity": "HIGH" | "CRITICAL",
+      "severity": "CRITICAL",
       "vulnerability": "short description & impact tied to the target",
       "commands": [
         {"command": "...", "explanation": "what is this command"},
@@ -546,7 +562,7 @@ async function analyzeWithGemini(topic) {
   const key = process.env.GEMINI_API_KEY || config.gemini?.apiKey;
   let model = process.env.GEMINI_MODEL || config.gemini?.model || 'gemini-1.5-flash';
   if (!key) return "";
-  const userPrompt = `Analyze the following console output for HIGH or CRITICAL security vulnerabilities that can be exploited.\n\nHIGH/CRITICAL vulnerabilities include:\n- Remote code execution opportunities\n- Authentication bypasses\n- Privilege escalation paths\n- SQL injection vulnerabilities\n- Exposed sensitive services (FTP with anonymous access, unprotected databases, etc.)\n- Default credentials on critical services\n- Buffer overflow possibilities\n- Directory traversal vulnerabilities\n\nOnly respond if you find serious vulnerabilities that require immediate exploitation attempts. Console output to analyze:\n\n${topic}`;
+  const userPrompt = `Analyze the following console output for CRITICAL security vulnerabilities that can be exploited.\n\CRITICAL vulnerabilities include:\n- Remote code execution opportunities\n- Authentication bypasses\n- Privilege escalation paths\n- SQL injection vulnerabilities\n- Exposed sensitive services (FTP with anonymous access, unprotected databases, etc.)\n- Default credentials on critical services\n- Buffer overflow possibilities\n- Directory traversal vulnerabilities\n\nOnly respond if you find serious vulnerabilities that require immediate exploitation attempts. Console output to analyze:\n\n${topic}`;
   
   const body = {
     contents: [

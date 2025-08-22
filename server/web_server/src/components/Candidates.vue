@@ -6,7 +6,7 @@
         :key="index"
         @click="selected"
       >
-        <v-tooltip left>
+        <v-tooltip left max-width="600px" content-class="large-tooltip">
           <template v-slot:activator="{ on }">
             <v-list-item-content v-on="on">
               <v-list-item-title>{{ command.candidate }}</v-list-item-title>
@@ -28,7 +28,7 @@
           v-for="(command2, index2) in commands.filter(elem => elem.group === command.group)"
           :key="index2"
           @click="selected">
-          <v-tooltip left>
+          <v-tooltip left max-width="600px" content-class="large-tooltip">
             <template v-slot:activator="{ on }">
               <v-list-item-content v-on="on">
                 <v-list-item-title>{{ command2.candidate }}</v-list-item-title>
@@ -110,3 +110,32 @@ export default {
   },
 };
 </script>
+
+<style>
+.large-tooltip {
+  font-size: 14px !important;
+  padding: 12px 16px !important;
+  max-width: 600px !important;
+  min-width: 350px !important;
+  word-wrap: break-word;
+  white-space: normal !important;
+  line-height: 1.4 !important;
+  text-overflow: unset !important;
+  overflow: visible !important;
+}
+
+.large-tooltip .v-tooltip__content {
+  max-width: 600px !important;
+  min-width: 350px !important;
+  white-space: normal !important;
+  text-overflow: clip !important;
+  overflow: visible !important;
+}
+
+/* Additional Vuetify tooltip override */
+.v-tooltip__content {
+  white-space: normal !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+}
+</style>
