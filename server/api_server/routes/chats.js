@@ -76,16 +76,15 @@ You analyze a pentester's terminal.
 
 Analyze ONLY outputs that clearly come from an attack command or a remote session. 
 
-Report ONLY HIGH/CRITICAL vulnerabilities. If no CRITICAL/HIGH vulnerabilities are found, reply exactly: NONE. If you find a vulnerability, provide 3 exploitation commands that directly target the vulnerability.
+Report ONLY CRITICAL/HIGH vulnerabilities. If no CRITICAL/HIGH vulnerabilities are found, reply exactly: NONE. If you find a vulnerability, provide up to 2 exploitation commands that directly target the vulnerability.
 
 When reporting, output ONLY this JSON (no extra text):
 {
-  "severity": "HIGH" | "CRITICAL",
+  "severity": "CRITICAL" | "HIGH",
   "vulnerability": "short description & impact tied to the target",
   "commands": [
     {"command": "...", "explanation": "what is this command"},
     {"command": "...", "explanation": "..."},
-    {"command": "...", "explanation": "..."}
   ]
 }
 `;
@@ -139,6 +138,127 @@ function parseAIResponse(content, provider) {
     }
     return null;
   }
+}
+
+/**
+ * Call Validation Agent for command validation
+ * @param {Object} aiData - AI analysis data with vulnerability info
+ * @param {string} provider - AI provider name
+ * @param {number} aiTerminalId - AI terminal ID for validation output
+ */
+function callValidationAgent(aiData, provider, aiTerminalId) {
+  const { spawn } = require('child_process');
+  const path = require('path');
+  const script = config.agent?.validationScript || './commands/agent_validation.py';
+  const timeoutMs = config.agent?.timeoutMs || 30000; // Shorter timeout for validation
+  const pythonPath = config.agent?.pythonPath || 'python3';
+  
+  // Fix the script path - resolve relative to the api_server directory, not routes
+  const scriptPath = path.resolve(__dirname, '..', script);
+  
+  // Prepare payload with vulnerability information for ValidationAgent
+  const inputPayload = JSON.stringify({
+    vulnerabilityInfo: {
+      severity: aiData.severity,
+      description: aiData.vulnerability,
+      provider: provider,
+      suggestedCommands: aiData.commands || []
+    }
+  });
+  
+  console.log(`[ValidationAgent] Spawning ValidationAgent: ${pythonPath} ${scriptPath} with timeout ${timeoutMs}ms`);
+  const py = spawn(pythonPath, [scriptPath], { 
+    cwd: path.resolve(__dirname, '..'), 
+    env: process.env 
+  });
+  
+  let agentOut = '';
+  let agentErr = '';
+  const timer = setTimeout(() => {
+    console.log(`[ValidationAgent] Timeout after ${timeoutMs}ms, killing process...`);
+    try { py.kill('SIGKILL'); } catch(e){}
+  }, timeoutMs);
+  
+  py.stdin.write(inputPayload);
+  py.stdin.end();
+  
+  py.stdout.on('data', (d) => agentOut += d.toString());
+  py.stderr.on('data', (d) => {
+    agentErr += d.toString();
+    // Debug output is captured but not displayed in terminal
+  });
+  
+  py.on('close', (code) => {
+    clearTimeout(timer);
+    console.log(`[ValidationAgent] ValidationAgent process completed with code: ${code}`);
+    
+    if (agentErr && agentErr.trim()) {
+      console.error('[ValidationAgent][stderr]', agentErr);
+    }
+    
+    if (agentOut && agentOut.trim()) {
+      try {
+        // Extract JSON from the end of the output
+        const lines = agentOut.trim().split('\n');
+        let jsonLine = '';
+        
+        // Look for the JSON response at the end of the output
+        for (let i = lines.length - 1; i >= 0; i--) {
+          const line = lines[i].trim();
+          if (line.startsWith('{') && line.includes('"validation_complete"')) {
+            jsonLine = line;
+            break;
+          }
+        }
+        
+        if (!jsonLine) {
+          throw new Error('No valid JSON response found in validation agent output');
+        }
+        
+        console.log(`[ValidationAgent] Extracted JSON: ${jsonLine.substring(0, 200)}...`);
+        
+        // Parse the validation result from ValidationAgent
+        const result = JSON.parse(jsonLine);
+        
+        if (result.validation_complete) {
+          console.log(`[ValidationAgent] Agent validated ${result.commands_validated} commands`);
+          
+          // Display validation results in terminal
+          let validationMessage = `Command Validation Results:\n`;
+          validationMessage += `Validated ${result.commands_validated} commands\n\n`;
+          
+          if (result.detailed_validation && result.detailed_validation.length > 0) {
+            result.detailed_validation.forEach((validation, index) => {
+              validationMessage += `${index + 1}. ${validation.command_checked}\n`;
+              validationMessage += `   Result: ${validation.validation_result}\n\n`;
+            });
+          }
+          
+          if (result.validation_summary) {
+            validationMessage += `Summary: ${result.validation_summary}\n`;
+          }
+          
+          // Show validation results in terminal
+          shell.executeCommand(aiTerminalId, validationMessage, false);
+          
+          // Post validation summary to chat
+          if (result.validation_summary && result.validation_summary.trim()) {
+            let chatMessage = `Validation completed for ${result.commands_validated} commands:\n\n`;
+            chatMessage += result.validation_summary;
+            
+            create("text", `ValidationAgent-${provider}`, chatMessage);
+            console.log(`[ValidationAgent] Posted validation results to chat from ${provider}`);
+          }
+        } else {
+          if (result.error) {
+            console.error(`[ValidationAgent] Error: ${result.error}`);
+          }
+        }
+      } catch (parseErr) {
+        console.error(`[ValidationAgent] Failed to parse validation agent output: ${parseErr.message}`);
+      }
+    }
+  });
 }
 
 /**
@@ -277,21 +397,28 @@ function createCommandsFromAI(aiData, provider) {
     create("text", provider, message);
     console.log(`[Chats] Added ${aiData.severity} vulnerability info to chat from ${provider}`);
     
-    // If CRITICAL vulnerability detected, trigger ReactAgent immediately
+    // If HIGH/CRITICAL vulnerability detected, trigger validation and optionally ReactAgent
     if (['HIGH', 'CRITICAL'].includes(aiData.severity?.toUpperCase()) && config.agent?.enabled) {
-      console.log('[Agent] HIGH/CRITICAL vulnerability detected, triggering ReactAgent...');
+      console.log('[Agent] HIGH/CRITICAL vulnerability detected, triggering validation...');
       
-      // Create AI terminal for command execution
+      // Create AI terminal for command validation/execution
       const aiTerminalId = getOrCreateAITerminal();
       console.log(`[Agent] Created/found AI terminal: ${aiTerminalId}`);
       
       // Ensure shell exists for the AI terminal
       shell.create(aiTerminalId);
       
-      // Agent will start analysis - no initial message needed
+      // First run validation agent to check if suggested commands are valid
+      callValidationAgent(aiData, provider, aiTerminalId);
       
-      // Call ReactAgent with vulnerability information
-      callReactAgent(aiData, provider, aiTerminalId);
+      // Optionally still run ReactAgent if configured (you can disable this by setting config.agent.useReactAgent to false)
+      if (config.agent?.useReactAgent !== false) {
+        console.log('[Agent] Also triggering ReactAgent for exploitation...');
+        // Add a small delay to let validation complete first
+        setTimeout(() => {
+          callReactAgent(aiData, provider, aiTerminalId);
+        }, 2000);
+      }
     }
   }
 
@@ -332,7 +459,7 @@ async function analyzeWithOpenAI(topic) {
     { role: "system", content: SYSTEM_PROMPT },
     { role: "user", content: `Analyze the following attacking command output and find HIGH or CRITICAL security vulnerabilities that can be exploited.
     
-    If you find a Critical or High vulnerability, provide up to 3 exploitation commands that directly target the vulnerability.
+    If you find a Critical or High vulnerability, provide up to 1 exploitation commands that directly target the vulnerability.
 
     When reporting, output ONLY this JSON (no extra text):
     {
@@ -340,7 +467,6 @@ async function analyzeWithOpenAI(topic) {
       "vulnerability": "short description & impact tied to the target",
       "commands": [
         {"command": "...", "explanation": "what is this command"},
-        {"command": "...", "explanation": "..."},
         {"command": "...", "explanation": "..."}
       ]
     }
@@ -376,7 +502,21 @@ async function analyzeWithLocal(topic) {
   const client = new OpenAIClient({ apiKey, baseURL });
   const messages = [
     { role: "system", content: SYSTEM_PROMPT },
-    { role: "user", content: `Analyze the following console output for HIGH or CRITICAL security vulnerabilities that can be exploited.\n\nHIGH/CRITICAL vulnerabilities include:\n- Remote code execution opportunities\n- Authentication bypasses\n- Privilege escalation paths\n- SQL injection vulnerabilities\n- Exposed sensitive services (FTP with anonymous access, unprotected databases, etc.)\n- Default credentials on critical services\n- Buffer overflow possibilities\n- Directory traversal vulnerabilities\n\nOnly respond if you find serious vulnerabilities that require immediate exploitation attempts. Console output to analyze:\n\n${topic}` }
+    { role: "user", content: `Analyze the following attacking command output and find HIGH or CRITICAL security vulnerabilities that can be exploited.
+    
+    If you find a Critical or High vulnerability, provide up to 2 exploitation commands that directly target the vulnerability.
+
+    When reporting, output ONLY this JSON (no extra text):
+    {
+      "severity": "HIGH" | "CRITICAL",
+      "vulnerability": "short description & impact tied to the target",
+      "commands": [
+        {"command": "...", "explanation": "what is this command"},
+        {"command": "...", "explanation": "..."}
+      ]
+    }
+
+    Console output to analyze:\n\n${topic}` }
   ];
   try {
     const resp = await client.chat.completions.create({

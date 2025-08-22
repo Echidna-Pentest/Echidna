@@ -18,6 +18,13 @@
               </div>
               <pre class="agent-content">{{ message.data }}</pre>
             </div>
+            <div v-else-if="message.author && message.author.startsWith('ValidationAgent-')" class="validation-agent-message">
+              <div class="validation-agent-header">
+                <strong>[AI] ValidationAgent - Command Validation</strong>
+                <span class="validation-agent-provider">{{ message.author.replace('ValidationAgent-', '') }}</span>
+              </div>
+              <pre class="validation-agent-content">{{ message.data }}</pre>
+            </div>
             <p v-else>{{ message.data }}</p>
 <!--            <span>{{ message.time }}</span> -->
           </div>
@@ -331,6 +338,71 @@ export default {
   padding: 8px;
   border-radius: 4px;
   border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+/* ValidationAgent message styling */
+.validation-agent-message {
+  width: 100%;
+  padding: 10px;
+  margin: 8px;
+  background: linear-gradient(135deg, rgba(34, 139, 34, 0.15), rgba(50, 205, 50, 0.1));
+  border-left: 5px solid #32cd32;
+  border-radius: 8px;
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.12);
+  position: relative;
+}
+
+.validation-agent-message::before {
+  content: "🔍 ";
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  font-size: 16px;
+}
+
+.validation-agent-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  padding-bottom: 6px;
+  border-bottom: 2px solid rgba(50, 205, 50, 0.3);
+  padding-left: 30px; /* Space for emoji */
+}
+
+.validation-agent-header strong {
+  color: #1f4e1f;
+  font-weight: 700;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.validation-agent-provider {
+  font-size: 11px;
+  background: linear-gradient(135deg, #32cd32, #228b22);
+  color: white;
+  padding: 3px 8px;
+  border-radius: 14px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  box-shadow: 0 2px 4px rgba(50, 205, 50, 0.3);
+}
+
+.validation-agent-content {
+  margin: 0;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  background-color: rgba(255, 255, 255, 0.6);
+  padding: 12px;
+  border-radius: 6px;
+  border: 1px solid rgba(50, 205, 50, 0.2);
+  color: #2d5016;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 
