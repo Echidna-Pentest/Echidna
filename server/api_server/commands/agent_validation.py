@@ -43,17 +43,26 @@ def setup_logging():
 logger = setup_logging()
 
 def create_llm_client(config: Dict[str, Any]):
-    """Create LLM client based on config with model preference support"""
+    """Create LLM client based on config with agent-enabled services"""
     logger.debug(f"DEBUG: Creating LLM client...")
     logger.debug(f"DEBUG: Config keys: {list(config.keys())}")
     
-    # Get agent configuration for model preference
-    agent_config = config.get('agent', {})
-    preferred_model = agent_config.get('preferredModel', 'auto').lower()
-    model_fallback = agent_config.get('modelFallback', True)
+    # Find services with agent enabled and determine order
+    agent_enabled_services = []
+    for service_name in ['gemini', 'openai', 'localAI']:
+        service_config = config.get(service_name, {})
+        if service_config.get('enabled') and service_config.get('agent'):
+            agent_enabled_services.append(service_name)
     
-    logger.debug(f"DEBUG: Preferred model: {preferred_model}")
-    logger.debug(f"DEBUG: Model fallback enabled: {model_fallback}")
+    logger.debug(f"DEBUG: Agent-enabled services: {agent_enabled_services}")
+    
+    # If no services have agent enabled, fall back to all enabled services
+    if not agent_enabled_services:
+        logger.debug("DEBUG: No agent-enabled services found, falling back to all enabled services")
+        for service_name in ['gemini', 'openai', 'localAI']:
+            service_config = config.get(service_name, {})
+            if service_config.get('enabled'):
+                agent_enabled_services.append(service_name)
     
     # Define model creation functions
     def try_gemini():
@@ -115,38 +124,28 @@ def create_llm_client(config: Dict[str, Any]):
     }
     
     try:
-        # Try preferred model first
-        if preferred_model in model_functions:
-            logger.debug(f"DEBUG: Trying preferred model: {preferred_model}")
-            client = model_functions[preferred_model]()
-            if client:
-                logger.debug(f"DEBUG: Successfully created {preferred_model} client")
-                return client
-            else:
-                logger.warning(f"DEBUG: Failed to create {preferred_model} client")
-        
-        # If preferred model failed or not specified, try fallback models
-        if model_fallback or preferred_model == 'auto':
-            logger.debug(f"DEBUG: Trying fallback models in order...")
+        # Try agent-enabled services in order
+        for service_name in agent_enabled_services:
+            # Map service names to function names
+            service_to_function = {
+                'gemini': 'gemini',
+                'openai': 'openai', 
+                'localAI': 'localai'
+            }
             
-            # Define fallback order (excluding the already tried preferred model)
-            fallback_order = ['gemini', 'openai', 'localai']
-            if preferred_model in fallback_order:
-                fallback_order.remove(preferred_model)
-                fallback_order.insert(0, preferred_model)  # Keep preferred first, but others as fallback
-            
-            for model_name in fallback_order:
-                if model_name == preferred_model:
-                    continue  # Skip already tried preferred model
-                
-                logger.debug(f"DEBUG: Trying fallback model: {model_name}")
-                client = model_functions[model_name]()
+            function_name = service_to_function.get(service_name)
+            if function_name and function_name in model_functions:
+                logger.debug(f"DEBUG: Trying agent-enabled service: {service_name}")
+                client = model_functions[function_name]()
                 if client:
-                    logger.debug(f"DEBUG: Successfully created fallback {model_name} client")
+                    logger.debug(f"DEBUG: Successfully created {service_name} client")
                     return client
+                else:
+                    logger.warning(f"DEBUG: Failed to create {service_name} client")
         
         # If we get here, no models worked
-        logger.error(f"DEBUG: No LLM configuration found or all models failed")
+        logger.error(f"DEBUG: No agent-enabled LLM services found or all failed")
+        logger.debug(f"DEBUG: Agent-enabled services attempted: {agent_enabled_services}")
         return None
             
     except ImportError as e:
@@ -299,8 +298,11 @@ def run_validation_agent(llm, commands_to_validate: List[str], max_iterations: i
              "- Does the output indicate it's working for penetration testing?\n"
              "- Is the command option appropriate?\n\n"
              "Remember: Call shell_command(commands=\"actual_command_here\") for each command.\n"
-             "Report: command execution result, output analysis, verdict (Functional/Non-functional)."
-             "**IMPORTANT: Keep all responses concise.**"),
+             "For EACH command, provide:\n"
+             "1. **Execution Result:** Brief description of what happened\n"
+             "2. **Output Analysis:** Analysis of the command output\n"
+             "3. **Verdict:** Functional or Non-functional\n\n"
+             "**IMPORTANT: Analyze ALL commands individually.**"),
             MessagesPlaceholder("agent_scratchpad"),
         ])
         
@@ -522,7 +524,8 @@ def main():
                 logger.debug("LLM client created successfully, proceeding with AI validation agent")
                 
                 # Get agent configuration
-                max_iterations = config.get('agentMaxIterations', 3)
+                agent_config = config.get('agent', {})
+                max_iterations = agent_config.get('maxIterations', 3)
                 logger.debug(f"Agent max iterations: {max_iterations}")
                 
                 # Run validation agent

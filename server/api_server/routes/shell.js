@@ -242,16 +242,27 @@ class Shell {
               // Skip analysis if the terminal output contains "ip addr" command or if terminal name is "AI"
               const terminalName = getTerminalName(this.id);
               if (!this.terminalOutput.includes("ip addr") && terminalName !== "AI") {
-                try {
-                  const p = chats.analysis(analyzedText, false);
-                  if (p && typeof p.then === 'function') {
-                    p.then((msg) => {
-                      console.log(`[Agent] AI analysis result: ${msg ? msg.substring(0, 200) : 'null'}...`);
-                      // AI analysis results are now handled directly in chats.js
-                      // ReactAgent is called immediately when CRITICAL vulnerabilities are detected
-                    }).catch(() => {});
-                  }
-                } catch (e) { /* noop */ }
+                
+                // Check if the executed command matches any registered attack commands
+                const trimmedCommand = this.command.trim();
+                const matchedCommands = commands.find(trimmedCommand);
+                
+                // Only run AI analysis if the command matches registered attack commands
+                if (matchedCommands && matchedCommands.length > 0) {
+                  console.log(`[Shell] Attack command detected: ${trimmedCommand} (matched ${matchedCommands.length} patterns)`);
+                  try {
+                    const p = chats.analysis(analyzedText, false);
+                    if (p && typeof p.then === 'function') {
+                      p.then((msg) => {
+                        console.log(`[Agent] AI analysis result: ${msg ? msg.substring(0, 200) : 'null'}...`);
+                        // AI analysis results are now handled directly in chats.js
+                        // ReactAgent is called immediately when CRITICAL vulnerabilities are detected
+                      }).catch(() => {});
+                    }
+                  } catch (e) { /* noop */ }
+                } else {
+                  console.log(`[Shell] Skipping AI analysis for non-attack command: ${trimmedCommand}`);
+                }
               }
               this.lastAnalyzedExecNo = this.execNo;
             }

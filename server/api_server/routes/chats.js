@@ -257,14 +257,36 @@ function callValidationAgent(aiData, provider, aiTerminalId) {
             });
           }
           
-          // Post validation summary to chat
-          if (result.validation_summary && result.validation_summary.trim()) {
-            let chatMessage = `Validation completed for ${result.commands_validated} commands:\n\n`;
+          // Post validation results to chat - show all command results
+          let chatMessage = `Validation completed for ${result.commands_validated} commands:\n\n`;
+          
+          // Show detailed results for each command
+          if (result.detailed_validation && result.detailed_validation.length > 0) {
+            result.detailed_validation.forEach((validation, index) => {
+              chatMessage += `**Command ${index + 1}:** \`${validation.command_checked}\`\n\n`;
+              
+              if (validation.validation_result && validation.validation_result.trim()) {
+                // Clean up the output for better readability
+                let cleanOutput = validation.validation_result;
+                cleanOutput = cleanOutput.replace(/^STDOUT:\s*/gm, '');
+                cleanOutput = cleanOutput.replace(/^STDERR:\s*/gm, '');
+                cleanOutput = cleanOutput.replace(/Return code:\s*\d+\s*$/gm, '');
+                cleanOutput = cleanOutput.trim();
+                
+                chatMessage += `**Execution Result:** ${cleanOutput}\n\n`;
+              }
+              
+              if (index < result.detailed_validation.length - 1) {
+                chatMessage += "---\n\n";
+              }
+            });
+          } else if (result.validation_summary && result.validation_summary.trim()) {
+            // Fallback to summary if no detailed results
             chatMessage += result.validation_summary;
-            
-            create("text", `ValidationAgent-${provider}`, chatMessage);
-            console.log(`[ValidationAgent] Posted validation results to chat from ${provider}`);
           }
+          
+          create("text", `ValidationAgent-${provider}`, chatMessage);
+          console.log(`[ValidationAgent] Posted validation results to chat from ${provider}`);
         } else {
           if (result.error) {
             console.error(`[ValidationAgent] Error: ${result.error}`);
@@ -414,7 +436,12 @@ function createCommandsFromAI(aiData, provider) {
     console.log(`[Chats] Added ${aiData.severity} vulnerability info to chat from ${provider}`);
     
     // If HIGH/CRITICAL vulnerability detected, trigger validation and optionally ReactAgent
-    if (['HIGH', 'CRITICAL'].includes(aiData.severity?.toUpperCase()) && config.agent?.enabled) {
+    // Check if any AI service has agent enabled
+    const hasAgentEnabled = ['gemini', 'openai', 'localAI'].some(service => 
+      config[service]?.enabled && config[service]?.agent
+    );
+    
+    if (['HIGH', 'CRITICAL'].includes(aiData.severity?.toUpperCase()) && (config.agent?.enabled || hasAgentEnabled)) {
       console.log('[Agent] HIGH/CRITICAL vulnerability detected, triggering validation...');
       
       // Create AI terminal for command validation/execution
