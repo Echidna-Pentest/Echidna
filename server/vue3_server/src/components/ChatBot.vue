@@ -41,7 +41,7 @@
         <div class="chat-input">
           <textarea
             v-model="newMessage"
-            placeholder="Type your message. You can ask chatgpt to analyze the scan result by @AI <Scanresult>"
+            placeholder="Type your message. Use @AI for all models, @localAI for Local AI, @geminiAI for Gemini, @openAI for OpenAI. Example: @AI <Scanresult>"
             @keydown.enter.exact.prevent="newLine"
           />
           <button @click="sendMessage">

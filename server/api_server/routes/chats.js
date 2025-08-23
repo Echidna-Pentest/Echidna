@@ -514,14 +514,27 @@ function createCommandsFromAI(aiData, provider) {
 }
 
 async function analyzeWithOpenAI(topic) {
+  console.log(`[Debug] analyzeWithOpenAI called with topic: "${topic}"`);
   const apiKey = process.env.OPENAI_API_KEY || config.openai?.apiKey;
-  if (!apiKey) return "";
+  if (!apiKey) {
+    console.log(`[Debug] No API key configured for OpenAI`);
+    return "";
+  }
   const client = new OpenAIClient({ apiKey });
-  const messages = [
+  
+  // Determine if this is a vulnerability analysis or general chat
+  const isVulnAnalysis = topic.toLowerCase().includes('scan') || topic.toLowerCase().includes('nmap') || topic.toLowerCase().includes('exploit') || topic.includes('STDOUT') || topic.includes('STDERR');
+  
+  const messages = isVulnAnalysis ? [
     { role: "system", content: SYSTEM_PROMPT },
     { role: "user", content: `${USER_PROMPT}${topic}` }
+  ] : [
+    { role: "system", content: "You are a helpful AI assistant. Respond naturally to user queries." },
+    { role: "user", content: topic }
   ];
+  
   try {
+    console.log(`[Debug] Making request to OpenAI... (vulnerability analysis: ${isVulnAnalysis})`);
     const resp = await client.chat.completions.create({
       model: process.env.OPENAI_MODEL || config.openai?.model || "gpt-4o-mini",
       messages,
@@ -529,30 +542,53 @@ async function analyzeWithOpenAI(topic) {
 //      temperature: 0.3, // Lower temperature for more consistent JSON
     });
     const content = resp.choices?.[0]?.message?.content || "";
+    console.log(`[Debug] OpenAI raw response: ${content ? content.substring(0, 300) : 'empty'}...`);
+    
     if (content) {
-      // Parse the AI response and create commands
-      const aiData = parseAIResponse(content, "openai");
-      if (aiData) {
-        createCommandsFromAI(aiData, "open-AI");
+      if (isVulnAnalysis) {
+        // Parse the AI response and create commands for vulnerability analysis
+        const aiData = parseAIResponse(content, "openai");
+        if (aiData) {
+          createCommandsFromAI(aiData, "open-AI");
+        }
+      } else {
+        // For general chat, just post the response to chat
+        console.log(`[Debug] OpenAI response appears to be a general chat response, posting to chat`);
+        create("text", "open-AI", content);
       }
     }
     return content ? `[openai] ${content}` : "";
   } catch (error) {
+    console.error(`[Debug] OpenAI error:`, error);
     const msg = `OpenAI error: ${error}`;
     return msg;
   }
 }
 
 async function analyzeWithLocal(topic) {
+  console.log(`[Debug] analyzeWithLocal called with topic: "${topic}"`);
   const baseURL = process.env.LOCAL_LLM_BASEURL || config.localAI?.baseUrl;
-  if (!baseURL) return "";
+  console.log(`[Debug] Local AI baseURL: ${baseURL}`);
+  if (!baseURL) {
+    console.log(`[Debug] No baseURL configured for Local AI`);
+    return "";
+  }
   const apiKey = process.env.OPENAI_API_KEY || 'sk-local';
   const client = new OpenAIClient({ apiKey, baseURL });
-  const messages = [
+  
+  // Determine if this is a vulnerability analysis or general chat
+  const isVulnAnalysis = topic.toLowerCase().includes('scan') || topic.toLowerCase().includes('nmap') || topic.toLowerCase().includes('exploit') || topic.includes('STDOUT') || topic.includes('STDERR');
+  
+  const messages = isVulnAnalysis ? [
     { role: "system", content: SYSTEM_PROMPT },
     { role: "user", content: `${USER_PROMPT}${topic}` }
+  ] : [
+    { role: "system", content: "You are a helpful AI assistant. Respond naturally to user queries." },
+    { role: "user", content: topic }
   ];
+  
   try {
+    console.log(`[Debug] Making request to Local AI... (vulnerability analysis: ${isVulnAnalysis})`);
     const resp = await client.chat.completions.create({
       model: process.env.LOCAL_LLM_MODEL || config.localAI?.model || 'auto',
       messages,
@@ -561,35 +597,52 @@ async function analyzeWithLocal(topic) {
     });
     const content = resp.choices?.[0]?.message?.content || "";
     console.log(`[Debug] Local AI raw response: ${content ? content.substring(0, 300) : 'empty'}...`);
+    
     if (content) {
-      // Parse the AI response and create commands
-      const aiData = parseAIResponse(content, "local");
-      console.log(`[Debug] Local AI parsed data:`, aiData ? 'Valid JSON found' : 'No valid data');
-      if (aiData) {
-        createCommandsFromAI(aiData, "Local-AI");
+      if (isVulnAnalysis) {
+        // Parse the AI response and create commands for vulnerability analysis
+        const aiData = parseAIResponse(content, "local");
+        console.log(`[Debug] Local AI parsed data:`, aiData ? 'Valid JSON found' : 'No valid data');
+        if (aiData) {
+          createCommandsFromAI(aiData, "Local-AI");
+        }
+      } else {
+        // For general chat, just post the response to chat
+        console.log(`[Debug] Local AI response appears to be a general chat response, posting to chat`);
+        create("text", "Local-AI", content);
       }
     }
     return content ? `[local] ${content}` : "";
   } catch (error) {
+    console.error(`[Debug] Local AI error:`, error);
     const msg = `Local LLM error: ${error}`;
     return msg;
   }
 }
 
 async function analyzeWithGemini(topic) {
+  console.log(`[Debug] analyzeWithGemini called with topic: "${topic}"`);
   const key = process.env.GEMINI_API_KEY || config.gemini?.apiKey;
   let model = process.env.GEMINI_MODEL || config.gemini?.model || 'gemini-1.5-flash';
-  if (!key) return "";
+  if (!key) {
+    console.log(`[Debug] No API key configured for Gemini`);
+    return "";
+  }
+  
+  // Determine if this is a vulnerability analysis or general chat
+  const isVulnAnalysis = topic.toLowerCase().includes('scan') || topic.toLowerCase().includes('nmap') || topic.toLowerCase().includes('exploit') || topic.includes('STDOUT') || topic.includes('STDERR');
   
   const body = {
     contents: [
-      { role: "user", parts: [{ text: `${SYSTEM_PROMPT}\n\n${USER_PROMPT}${topic}` }] }
+      { role: "user", parts: [{ text: isVulnAnalysis ? `${SYSTEM_PROMPT}\n\n${USER_PROMPT}${topic}` : topic }] }
     ]
   };
+  
   const maxRetries = 3;
   let attempt = 0;
   while (attempt < maxRetries) {
     try {
+      console.log(`[Debug] Making request to Gemini... (vulnerability analysis: ${isVulnAnalysis})`);
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
       const resp = await axios.post(url, body, {
         headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
@@ -597,15 +650,24 @@ async function analyzeWithGemini(topic) {
       });
       const parts = resp.data?.candidates?.[0]?.content?.parts || [];
       const content = parts.map(p => p.text || "").join("") || "";
+      console.log(`[Debug] Gemini raw response: ${content ? content.substring(0, 300) : 'empty'}...`);
+      
       if (content) {
-        // Parse the AI response and create commands
-        const aiData = parseAIResponse(content, "Gemini-AI");
-        if (aiData) {
-          createCommandsFromAI(aiData, "Gemini-AI");
+        if (isVulnAnalysis) {
+          // Parse the AI response and create commands for vulnerability analysis
+          const aiData = parseAIResponse(content, "Gemini-AI");
+          if (aiData) {
+            createCommandsFromAI(aiData, "Gemini-AI");
+          }
+        } else {
+          // For general chat, just post the response to chat
+          console.log(`[Debug] Gemini response appears to be a general chat response, posting to chat`);
+          create("text", "Gemini-AI", content);
         }
       }
       return content ? `[gemini] ${content}` : "";
     } catch (error) {
+      console.error(`[Debug] Gemini error:`, error);
       const status = error?.response?.status;
       const retriable = status >= 500 || status === 429 || error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT' || error.code === 'ECONNRESET';
       // on first failure, try the '-latest' alias once
@@ -628,24 +690,54 @@ async function analyzeWithGemini(topic) {
 }
 
 function providerEnabled(name) {
-  if (name === 'openai') return (process.env.ENABLE_OPENAI?.toLowerCase() === 'true') || (config.openai?.enabled ?? true);
-  if (name === 'local')  return (process.env.ENABLE_LOCAL?.toLowerCase() === 'true')  || (config.localAI?.enabled ?? !!(process.env.LOCAL_LLM_BASEURL || config.localAI?.baseUrl));
-  if (name === 'gemini') return (process.env.ENABLE_GEMINI?.toLowerCase() === 'true') || (config.gemini?.enabled ?? false);
-  return false;
+  let enabled = false;
+  if (name === 'openai') {
+    enabled = (process.env.ENABLE_OPENAI?.toLowerCase() === 'true') || (config.openai?.enabled ?? true);
+  } else if (name === 'local') {
+    enabled = (process.env.ENABLE_LOCAL?.toLowerCase() === 'true') || (config.localAI?.enabled ?? !!(process.env.LOCAL_LLM_BASEURL || config.localAI?.baseUrl));
+  } else if (name === 'gemini') {
+    enabled = (process.env.ENABLE_GEMINI?.toLowerCase() === 'true') || (config.gemini?.enabled ?? false);
+  }
+  console.log(`[Debug] Provider ${name} enabled: ${enabled}`);
+  return enabled;
 }
 
-function analysis(scanresult, isRequestedAnalysis = false) {
+function analysis(scanresult, isRequestedAnalysis = false, specificProvider = null) {
+  console.log(`[Analysis] Called with provider: ${specificProvider || 'all'}`);
+  
   if (!(config.AIAnalysis || isRequestedAnalysis)) {
+    console.log(`[Analysis] Disabled - AIAnalysis=${config.AIAnalysis}, requested=${isRequestedAnalysis}`);
     return Promise.resolve("");
   }
-  if (!scanresult) return Promise.resolve("");
+  if (!scanresult) {
+    console.log(`[Analysis] No content provided`);
+    return Promise.resolve("");
+  }
   const tasks = [];
-  if (providerEnabled('openai')) tasks.push(analyzeWithOpenAI(scanresult));
-  if (providerEnabled('local'))  tasks.push(analyzeWithLocal(scanresult));
-  if (providerEnabled('gemini')) tasks.push(analyzeWithGemini(scanresult));
+  
+  // If specific provider is requested, only use that one
+  if (specificProvider) {
+    if (specificProvider === 'openai' && providerEnabled('openai')) {
+      tasks.push(analyzeWithOpenAI(scanresult));
+    } else if (specificProvider === 'local' && providerEnabled('local')) {
+      tasks.push(analyzeWithLocal(scanresult));
+    } else if (specificProvider === 'gemini' && providerEnabled('gemini')) {
+      tasks.push(analyzeWithGemini(scanresult));
+    } else {
+      console.log(`[Analysis] Provider ${specificProvider} not enabled`);
+    }
+  } else {
+    // Default behavior - use all enabled providers
+    if (providerEnabled('openai')) tasks.push(analyzeWithOpenAI(scanresult));
+    if (providerEnabled('local'))  tasks.push(analyzeWithLocal(scanresult));
+    if (providerEnabled('gemini')) tasks.push(analyzeWithGemini(scanresult));
+  }
+  
+  console.log(`[Analysis] Executing ${tasks.length} task(s)`);
   if (tasks.length === 0) return Promise.resolve("");
   return Promise.allSettled(tasks).then(results => {
     const texts = results.filter(r => r.status === 'fulfilled').map(r => r.value).filter(Boolean);
+    console.log(`[Analysis] Completed - ${texts.length} successful responses`);
     return texts.join("\n");
   });
 }
@@ -737,8 +829,24 @@ function router() {
       }else{
         create(req.body.message.type, req.body.message.author, req.body.message.data);
       }
-      if (req.body.message.data.substring(0,3) == "@AI"){
-        analysis(req.body.message.data.substring(3), true);
+      
+      // Handle AI queries with specific providers
+      const messageData = req.body.message.data;
+      console.log(`[Chat] Processing message: "${messageData}"`);
+      
+      if (messageData.startsWith("@localAI")) {
+        console.log(`[Chat] Detected @localAI query`);
+        analysis(messageData.substring(8).trim(), true, 'local');
+      } else if (messageData.startsWith("@geminiAI")) {
+        console.log(`[Chat] Detected @geminiAI query`);
+        analysis(messageData.substring(9).trim(), true, 'gemini');
+      } else if (messageData.startsWith("@openAI")) {
+        console.log(`[Chat] Detected @openAI query`);
+        analysis(messageData.substring(7).trim(), true, 'openai');
+      } else if (messageData.startsWith("@AI")) {
+        console.log(`[Chat] Detected @AI query`);
+        // Default behavior - use all AI models
+        analysis(messageData.substring(3).trim(), true);
       }
    });
 
