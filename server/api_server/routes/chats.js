@@ -460,7 +460,7 @@ function createCommandsFromAI(aiData, provider) {
       config[service]?.enabled && config[service]?.agent
     );
     
-    if (['HIGH', 'CRITICAL'].includes(aiData.severity?.toUpperCase()) && (config.agent?.enabled || hasAgentEnabled)) {
+    if (['HIGH', 'CRITICAL'].includes(aiData.severity?.toUpperCase()) && hasAgentEnabled) {
       console.log('[Agent] HIGH/CRITICAL vulnerability detected, triggering validation...');
       
       // Create AI terminal for command validation/execution

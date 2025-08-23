@@ -1,26 +1,35 @@
 {
+    "_comment": "Agent Configuration Guide:",
+    "_comment_agent": "agent: true/false - Enable agent functionality for each AI service",
+    "_comment_agentPreference": "Set agent: true on multiple services to enable fallback between them",
+    "_comment_example1": "Example: gemini.agent=true, localAI.agent=true will try Gemini first, then LocalAI",
+    "_comment_example2": "Example: only localAI.agent=true will use LocalAI exclusively for agent tasks",
+    
     "AIAnalysis": true,
     "openai": {
         "enabled": false,
-        "apiKey": "APIKEY",
-        "model": "gpt-4o-mini"
+        "apiKey": "openAIAPIKEY",
+        "model": "o4-mini",
+        "agent": false
     },
     "gemini": {
         "enabled": true,
-        "apiKey": "APIKEY",
-        "model": "gemini-2.5-flash"
+        "apiKey": "geminiAPIKEY",
+        "model": "gemini-2.5-flash",
+        "agent": false
     },
     "localAI": {
         "enabled": true,
-        "baseUrl": "http://172.20.10.2:1234/v1",
-        "model": "auto"
+        "baseUrl": "http://10.231.145.26:1234/v1",
+        "model": "auto",
+        "agent": true
     },
     "agent": {
-        "enabled": true,
         "script": "./commands/agent_react.py",
-        "pythonPath": "../../../venv/bin/python",
-        "maxCommands": 1,
-        "maxIterations": 3,
-        "timeoutMs": 20000
+        "validationScript": "./commands/agent_validation.py",
+        "pythonPath": "python3",
+        "timeoutMs": 60000,
+        "useReactAgent": false,
+        "maxIterations": 3
     }
 }
