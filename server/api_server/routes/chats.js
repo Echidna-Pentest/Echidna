@@ -76,7 +76,7 @@ You analyze a pentester's terminal.
 
 Analyze ONLY outputs that clearly come from an attack command or a remote session. 
 
-Report ONLY CRITICAL vulnerabilities. If no CRITICAL vulnerabilities are found, reply exactly: NONE. If you find a vulnerability, provide up to 2 exploitation commands that directly target the vulnerability.
+Report ONLY CRITICAL vulnerabilities. If no CRITICAL vulnerabilities are found, reply exactly: NONE. If you find a vulnerability, return ONLY the TOP 1–2 exploitation commands that are MOST LIKELY TO SUCCEED NOW based on the observed evidence.
 
 When reporting, output ONLY this JSON (no extra text):
 {
@@ -87,6 +87,25 @@ When reporting, output ONLY this JSON (no extra text):
     {"command": "...", "explanation": "..."},
   ]
 }
+`;
+
+// User prompt template for all AI models
+const USER_PROMPT = `Analyze the following attacking command output and find CRITICAL security vulnerabilities that can be exploited.
+    
+If a CRITICAL vulnerability exists, return ONLY the TOP 1–2 exploitation commands MOST LIKELY TO SUCCEED NOW.
+
+When reporting, output ONLY this JSON (no extra text):
+{
+  "severity": "CRITICAL",
+  "vulnerability": "short description & impact tied to the target",
+  "commands": [
+    {"command": "...", "explanation": "what is this command"},
+    {"command": "...", "explanation": "..."}
+  ]
+}
+
+Console output to analyze:
+
 `;
 
 // postChat function removed - AI analysis results are handled via CandidateCommands only
@@ -500,21 +519,7 @@ async function analyzeWithOpenAI(topic) {
   const client = new OpenAIClient({ apiKey });
   const messages = [
     { role: "system", content: SYSTEM_PROMPT },
-    { role: "user", content: `Analyze the following attacking command output and find CRITICAL security vulnerabilities that can be exploited.
-    
-    If you find a Critical vulnerability, provide up to 1 exploitation commands that directly target the vulnerability.
-
-    When reporting, output ONLY this JSON (no extra text):
-    {
-      "severity": "CRITICAL",
-      "vulnerability": "short description & impact tied to the target",
-      "commands": [
-        {"command": "...", "explanation": "what is this command"},
-        {"command": "...", "explanation": "..."}
-      ]
-    }
-
-    Console output to analyze:\n\n${topic}` }
+    { role: "user", content: `${USER_PROMPT}${topic}` }
   ];
   try {
     const resp = await client.chat.completions.create({
@@ -545,21 +550,7 @@ async function analyzeWithLocal(topic) {
   const client = new OpenAIClient({ apiKey, baseURL });
   const messages = [
     { role: "system", content: SYSTEM_PROMPT },
-    { role: "user", content: `Analyze the following attacking command output and find CRITICAL security vulnerabilities that can be exploited.
-    
-    If you find a Critical vulnerability, provide up to 2 exploitation commands that directly target the vulnerability.
-
-    When reporting, output ONLY this JSON (no extra text):
-    {
-      "severity": "CRITICAL",
-      "vulnerability": "short description & impact tied to the target",
-      "commands": [
-        {"command": "...", "explanation": "what is this command"},
-        {"command": "...", "explanation": "..."}
-      ]
-    }
-
-    Console output to analyze:\n\n${topic}` }
+    { role: "user", content: `${USER_PROMPT}${topic}` }
   ];
   try {
     const resp = await client.chat.completions.create({
@@ -589,11 +580,10 @@ async function analyzeWithGemini(topic) {
   const key = process.env.GEMINI_API_KEY || config.gemini?.apiKey;
   let model = process.env.GEMINI_MODEL || config.gemini?.model || 'gemini-1.5-flash';
   if (!key) return "";
-  const userPrompt = `Analyze the following console output for CRITICAL security vulnerabilities that can be exploited.\n\CRITICAL vulnerabilities include:\n- Remote code execution opportunities\n- Authentication bypasses\n- Privilege escalation paths\n- SQL injection vulnerabilities\n- Exposed sensitive services (FTP with anonymous access, unprotected databases, etc.)\n- Default credentials on critical services\n- Buffer overflow possibilities\n- Directory traversal vulnerabilities\n\nOnly respond if you find serious vulnerabilities that require immediate exploitation attempts. Console output to analyze:\n\n${topic}`;
   
   const body = {
     contents: [
-      { role: "user", parts: [{ text: `${SYSTEM_PROMPT}\n\n${userPrompt}` }] }
+      { role: "user", parts: [{ text: `${SYSTEM_PROMPT}\n\n${USER_PROMPT}${topic}` }] }
     ]
   };
   const maxRetries = 3;
