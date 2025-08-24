@@ -303,6 +303,19 @@ class Shell {
         return this.terminalOutput + "\n";
      }
    }
+
+    /**
+     * Display output directly to terminal without executing as command
+     * @param {string} output - The output text to display
+     */
+    displayOutput(output) {
+        if (this.alive && output && this.logging) {
+            // Create a log entry directly without going through the output method
+            // This bypasses the PTY processing but still creates proper logs
+            ++this.execNo;
+            logs.create(this.id, this.execNo, ++this.logSeqNo, "", 0, output, new Date());
+        }
+    }
 }
 
 
@@ -434,6 +447,20 @@ function executeCommand(terminalId, command, logging = false) {
 }
 
 /**
+ * Display output directly to terminal without executing as command
+ * @param {number} terminalId 
+ * @param {string} output 
+ * @returns {boolean} success
+ */
+function displayOutput(terminalId, output) {
+  if (terminalId in _shells) {
+    _shells[terminalId].displayOutput(output);
+    return true;
+  }
+  return false;
+}
+
+/**
  * REST API routing
  * @param {Object} router
  */
@@ -468,3 +495,4 @@ module.exports.destroy = destroy;
 module.exports.resizeTerminal = resizeTerminal;
 module.exports.route = route;
 module.exports.executeCommand = executeCommand;
+module.exports.displayOutput = displayOutput;

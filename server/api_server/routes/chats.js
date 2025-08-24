@@ -513,11 +513,11 @@ function createCommandsFromAI(aiData, provider) {
   });
 }
 
-async function analyzeWithOpenAI(topic) {
-  console.log(`[Debug] analyzeWithOpenAI called with topic: "${topic}"`);
+async function analyzeWithOpenAI(topic, chatHistory = []) {
+  console.log(`[OpenAI] Called with topic: "${topic.substring(0, 50)}..." and ${chatHistory.length} history messages`);
   const apiKey = process.env.OPENAI_API_KEY || config.openai?.apiKey;
   if (!apiKey) {
-    console.log(`[Debug] No API key configured for OpenAI`);
+    console.log(`[OpenAI] No API key configured`);
     return "";
   }
   const client = new OpenAIClient({ apiKey });
@@ -525,24 +525,43 @@ async function analyzeWithOpenAI(topic) {
   // Determine if this is a vulnerability analysis or general chat
   const isVulnAnalysis = topic.toLowerCase().includes('scan') || topic.toLowerCase().includes('nmap') || topic.toLowerCase().includes('exploit') || topic.includes('STDOUT') || topic.includes('STDERR');
   
-  const messages = isVulnAnalysis ? [
-    { role: "system", content: SYSTEM_PROMPT },
-    { role: "user", content: `${USER_PROMPT}${topic}` }
-  ] : [
-    { role: "system", content: "You are a helpful AI assistant. Respond naturally to user queries." },
-    { role: "user", content: topic }
-  ];
+  let messages = [];
+  
+  if (isVulnAnalysis) {
+    // Vulnerability analysis mode
+    messages = [
+      { role: "system", content: SYSTEM_PROMPT },
+      { role: "user", content: `${USER_PROMPT}${topic}` }
+    ];
+  } else {
+    // General chat mode with conversation history
+    messages = [
+      { role: "system", content: "You are a helpful AI assistant specialized in cybersecurity and penetration testing. You have access to previous conversation history to provide context-aware responses. Answer questions naturally and refer to previous findings when relevant." }
+    ];
+    
+    // Add recent chat history for context
+    chatHistory.forEach(msg => {
+      if (msg.role === 'user') {
+        messages.push({ role: "user", content: msg.content });
+      } else if (msg.author && (msg.author.includes('AI') || msg.author === 'chatbot')) {
+        messages.push({ role: "assistant", content: msg.content });
+      }
+    });
+    
+    // Add current user query
+    messages.push({ role: "user", content: topic });
+  }
   
   try {
-    console.log(`[Debug] Making request to OpenAI... (vulnerability analysis: ${isVulnAnalysis})`);
+    console.log(`[OpenAI] Making request (vulnerability analysis: ${isVulnAnalysis})`);
     const resp = await client.chat.completions.create({
       model: process.env.OPENAI_MODEL || config.openai?.model || "gpt-4o-mini",
       messages,
-//      max_tokens: 3000, // Increased for complete JSON response
-//      temperature: 0.3, // Lower temperature for more consistent JSON
+      max_tokens: isVulnAnalysis ? 3000 : 1500,
+      temperature: isVulnAnalysis ? 0.3 : 0.7,
     });
     const content = resp.choices?.[0]?.message?.content || "";
-    console.log(`[Debug] OpenAI raw response: ${content ? content.substring(0, 300) : 'empty'}...`);
+    console.log(`[OpenAI] Response received (${content.length} chars)`);
     
     if (content) {
       if (isVulnAnalysis) {
@@ -553,24 +572,22 @@ async function analyzeWithOpenAI(topic) {
         }
       } else {
         // For general chat, just post the response to chat
-        console.log(`[Debug] OpenAI response appears to be a general chat response, posting to chat`);
         create("text", "open-AI", content);
       }
     }
     return content ? `[openai] ${content}` : "";
   } catch (error) {
-    console.error(`[Debug] OpenAI error:`, error);
-    const msg = `OpenAI error: ${error}`;
+    console.error(`[OpenAI] Error:`, error.message);
+    const msg = `OpenAI error: ${error.message}`;
     return msg;
   }
 }
 
-async function analyzeWithLocal(topic) {
-  console.log(`[Debug] analyzeWithLocal called with topic: "${topic}"`);
+async function analyzeWithLocal(topic, chatHistory = []) {
+  console.log(`[LocalAI] Called with topic: "${topic.substring(0, 50)}..." and ${chatHistory.length} history messages`);
   const baseURL = process.env.LOCAL_LLM_BASEURL || config.localAI?.baseUrl;
-  console.log(`[Debug] Local AI baseURL: ${baseURL}`);
   if (!baseURL) {
-    console.log(`[Debug] No baseURL configured for Local AI`);
+    console.log(`[LocalAI] No baseURL configured`);
     return "";
   }
   const apiKey = process.env.OPENAI_API_KEY || 'sk-local';
@@ -579,70 +596,110 @@ async function analyzeWithLocal(topic) {
   // Determine if this is a vulnerability analysis or general chat
   const isVulnAnalysis = topic.toLowerCase().includes('scan') || topic.toLowerCase().includes('nmap') || topic.toLowerCase().includes('exploit') || topic.includes('STDOUT') || topic.includes('STDERR');
   
-  const messages = isVulnAnalysis ? [
-    { role: "system", content: SYSTEM_PROMPT },
-    { role: "user", content: `${USER_PROMPT}${topic}` }
-  ] : [
-    { role: "system", content: "You are a helpful AI assistant. Respond naturally to user queries." },
-    { role: "user", content: topic }
-  ];
+  let messages = [];
+  
+  if (isVulnAnalysis) {
+    // Vulnerability analysis mode
+    messages = [
+      { role: "system", content: SYSTEM_PROMPT },
+      { role: "user", content: `${USER_PROMPT}${topic}` }
+    ];
+  } else {
+    // General chat mode with conversation history
+    messages = [
+      { role: "system", content: "You are a helpful AI assistant specialized in cybersecurity and penetration testing. You have access to previous conversation history to provide context-aware responses. Answer questions naturally and refer to previous findings when relevant." }
+    ];
+    
+    // Add recent chat history for context
+    chatHistory.forEach(msg => {
+      if (msg.role === 'user') {
+        messages.push({ role: "user", content: msg.content });
+      } else if (msg.author && (msg.author.includes('AI') || msg.author === 'chatbot')) {
+        messages.push({ role: "assistant", content: msg.content });
+      }
+    });
+    
+    // Add current user query
+    messages.push({ role: "user", content: topic });
+  }
   
   try {
-    console.log(`[Debug] Making request to Local AI... (vulnerability analysis: ${isVulnAnalysis})`);
+    console.log(`[LocalAI] Making request (vulnerability analysis: ${isVulnAnalysis})`);
     const resp = await client.chat.completions.create({
       model: process.env.LOCAL_LLM_MODEL || config.localAI?.model || 'auto',
       messages,
-      max_tokens: 3000, // Increased for complete JSON response
-      temperature: 0.3, // Lower temperature for more consistent JSON
+      max_tokens: isVulnAnalysis ? 3000 : 1500,
+      temperature: isVulnAnalysis ? 0.3 : 0.7,
     });
     const content = resp.choices?.[0]?.message?.content || "";
-    console.log(`[Debug] Local AI raw response: ${content ? content.substring(0, 300) : 'empty'}...`);
+    console.log(`[LocalAI] Response received (${content.length} chars)`);
     
     if (content) {
       if (isVulnAnalysis) {
         // Parse the AI response and create commands for vulnerability analysis
         const aiData = parseAIResponse(content, "local");
-        console.log(`[Debug] Local AI parsed data:`, aiData ? 'Valid JSON found' : 'No valid data');
         if (aiData) {
           createCommandsFromAI(aiData, "Local-AI");
         }
       } else {
         // For general chat, just post the response to chat
-        console.log(`[Debug] Local AI response appears to be a general chat response, posting to chat`);
         create("text", "Local-AI", content);
       }
     }
     return content ? `[local] ${content}` : "";
   } catch (error) {
-    console.error(`[Debug] Local AI error:`, error);
-    const msg = `Local LLM error: ${error}`;
+    console.error(`[LocalAI] Error:`, error.message);
+    const msg = `Local LLM error: ${error.message}`;
     return msg;
   }
 }
 
-async function analyzeWithGemini(topic) {
-  console.log(`[Debug] analyzeWithGemini called with topic: "${topic}"`);
+async function analyzeWithGemini(topic, chatHistory = []) {
+  console.log(`[Gemini] Called with topic: "${topic.substring(0, 50)}..." and ${chatHistory.length} history messages`);
   const key = process.env.GEMINI_API_KEY || config.gemini?.apiKey;
   let model = process.env.GEMINI_MODEL || config.gemini?.model || 'gemini-1.5-flash';
   if (!key) {
-    console.log(`[Debug] No API key configured for Gemini`);
+    console.log(`[Gemini] No API key configured`);
     return "";
   }
   
   // Determine if this is a vulnerability analysis or general chat
   const isVulnAnalysis = topic.toLowerCase().includes('scan') || topic.toLowerCase().includes('nmap') || topic.toLowerCase().includes('exploit') || topic.includes('STDOUT') || topic.includes('STDERR');
   
-  const body = {
-    contents: [
-      { role: "user", parts: [{ text: isVulnAnalysis ? `${SYSTEM_PROMPT}\n\n${USER_PROMPT}${topic}` : topic }] }
-    ]
-  };
+  let contents = [];
+  
+  if (isVulnAnalysis) {
+    // Vulnerability analysis mode
+    contents = [
+      { role: "user", parts: [{ text: `${SYSTEM_PROMPT}\n\n${USER_PROMPT}${topic}` }] }
+    ];
+  } else {
+    // General chat mode with conversation history
+    let conversationText = "You are a helpful AI assistant specialized in cybersecurity and penetration testing. You have access to previous conversation history to provide context-aware responses. Answer questions naturally and refer to previous findings when relevant.\n\nConversation History:\n";
+    
+    // Add recent chat history for context
+    chatHistory.forEach(msg => {
+      if (msg.role === 'user') {
+        conversationText += `User: ${msg.content}\n`;
+      } else if (msg.author && (msg.author.includes('AI') || msg.author === 'chatbot')) {
+        conversationText += `Assistant: ${msg.content}\n`;
+      }
+    });
+    
+    conversationText += `\nCurrent Question: ${topic}\n\nPlease respond to the current question, taking into account the conversation history above.`;
+    
+    contents = [
+      { role: "user", parts: [{ text: conversationText }] }
+    ];
+  }
+  
+  const body = { contents };
   
   const maxRetries = 3;
   let attempt = 0;
   while (attempt < maxRetries) {
     try {
-      console.log(`[Debug] Making request to Gemini... (vulnerability analysis: ${isVulnAnalysis})`);
+      console.log(`[Gemini] Making request (vulnerability analysis: ${isVulnAnalysis})`);
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
       const resp = await axios.post(url, body, {
         headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
@@ -650,7 +707,7 @@ async function analyzeWithGemini(topic) {
       });
       const parts = resp.data?.candidates?.[0]?.content?.parts || [];
       const content = parts.map(p => p.text || "").join("") || "";
-      console.log(`[Debug] Gemini raw response: ${content ? content.substring(0, 300) : 'empty'}...`);
+      console.log(`[Gemini] Response received (${content.length} chars)`);
       
       if (content) {
         if (isVulnAnalysis) {
@@ -661,25 +718,24 @@ async function analyzeWithGemini(topic) {
           }
         } else {
           // For general chat, just post the response to chat
-          console.log(`[Debug] Gemini response appears to be a general chat response, posting to chat`);
           create("text", "Gemini-AI", content);
         }
       }
       return content ? `[gemini] ${content}` : "";
     } catch (error) {
-      console.error(`[Debug] Gemini error:`, error);
+      console.error(`[Gemini] Error:`, error.message);
       const status = error?.response?.status;
       const retriable = status >= 500 || status === 429 || error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT' || error.code === 'ECONNRESET';
       // on first failure, try the '-latest' alias once
       if (attempt === 0 && !model.endsWith('-latest')) {
         model = `${model}-latest`;
       } else if (!retriable) {
-        const msg = `Gemini error: ${error}`;
+        const msg = `Gemini error: ${error.message}`;
         return msg;
       }
       attempt++;
       if (attempt >= maxRetries) {
-        const msg = `Gemini error: ${error}`;
+        const msg = `Gemini error: ${error.message}`;
         return msg;
       }
       const backoffMs = 500 * Math.pow(2, attempt - 1);
@@ -702,7 +758,7 @@ function providerEnabled(name) {
   return enabled;
 }
 
-function analysis(scanresult, isRequestedAnalysis = false, specificProvider = null) {
+function analysis(scanresult, isRequestedAnalysis = false, specificProvider = null, includeHistory = true) {
   console.log(`[Analysis] Called with provider: ${specificProvider || 'all'}`);
   
   if (!(config.AIAnalysis || isRequestedAnalysis)) {
@@ -713,27 +769,31 @@ function analysis(scanresult, isRequestedAnalysis = false, specificProvider = nu
     console.log(`[Analysis] No content provided`);
     return Promise.resolve("");
   }
+  
+  // Get recent chat history for context if this is a user-requested analysis
+  const chatHistory = (isRequestedAnalysis && includeHistory) ? getRecentChatHistory(8, 'user') : [];
+  
   const tasks = [];
   
   // If specific provider is requested, only use that one
   if (specificProvider) {
     if (specificProvider === 'openai' && providerEnabled('openai')) {
-      tasks.push(analyzeWithOpenAI(scanresult));
+      tasks.push(analyzeWithOpenAI(scanresult, chatHistory));
     } else if (specificProvider === 'local' && providerEnabled('local')) {
-      tasks.push(analyzeWithLocal(scanresult));
+      tasks.push(analyzeWithLocal(scanresult, chatHistory));
     } else if (specificProvider === 'gemini' && providerEnabled('gemini')) {
-      tasks.push(analyzeWithGemini(scanresult));
+      tasks.push(analyzeWithGemini(scanresult, chatHistory));
     } else {
       console.log(`[Analysis] Provider ${specificProvider} not enabled`);
     }
   } else {
     // Default behavior - use all enabled providers
-    if (providerEnabled('openai')) tasks.push(analyzeWithOpenAI(scanresult));
-    if (providerEnabled('local'))  tasks.push(analyzeWithLocal(scanresult));
-    if (providerEnabled('gemini')) tasks.push(analyzeWithGemini(scanresult));
+    if (providerEnabled('openai')) tasks.push(analyzeWithOpenAI(scanresult, chatHistory));
+    if (providerEnabled('local'))  tasks.push(analyzeWithLocal(scanresult, chatHistory));
+    if (providerEnabled('gemini')) tasks.push(analyzeWithGemini(scanresult, chatHistory));
   }
   
-  console.log(`[Analysis] Executing ${tasks.length} task(s)`);
+  console.log(`[Analysis] Executing ${tasks.length} task(s) with ${chatHistory.length} history messages`);
   if (tasks.length === 0) return Promise.resolve("");
   return Promise.allSettled(tasks).then(results => {
     const texts = results.filter(r => r.status === 'fulfilled').map(r => r.value).filter(Boolean);
@@ -786,6 +846,32 @@ function getChats() {
 
 function getAllChats() {
   return _chats;
+}
+
+/**
+ * Get recent chat history for context (last N messages)
+ * @param {number} limit - Number of recent messages to retrieve
+ * @param {string} excludeAuthor - Author to exclude from history (e.g., current user message)
+ * @returns {Array} Recent chat messages formatted for AI context
+ */
+function getRecentChatHistory(limit = 10, excludeAuthor = null) {
+  if (!_chats || _chats.length === 0) {
+    return [];
+  }
+  
+  // Get recent messages, excluding the current user's message if specified
+  let recentChats = _chats.slice(-limit);
+  if (excludeAuthor) {
+    recentChats = recentChats.filter(chat => chat.author !== excludeAuthor);
+  }
+  
+  // Format for AI context
+  return recentChats.map(chat => ({
+    role: chat.author === 'user' ? 'user' : 'assistant',
+    content: chat.data,
+    author: chat.author,
+    timestamp: chat.chatId
+  }));
 }
 
 /**
@@ -848,6 +934,9 @@ function router() {
         // Default behavior - use all AI models
         analysis(messageData.substring(3).trim(), true);
       }
+      
+      // Send response
+      res.status(200).json({ success: true, message: 'Message received' });
    });
 
   /**

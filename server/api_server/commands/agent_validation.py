@@ -231,12 +231,20 @@ def build_validation_shell_tool():
                 return f"ERROR: Command '{command_str}' blocked for safety reasons (dangerous pattern detected)"
         
         try:
+            # Set up environment to prevent stty errors
+            env = os.environ.copy()
+            env['TERM'] = 'dumb'  # Use dumb terminal to avoid stty issues
+            env['DEBIAN_FRONTEND'] = 'noninteractive'  # Prevent interactive prompts
+            env['MSF_DATABASE_CONFIG'] = '/dev/null'  # Prevent database connection attempts
+            env['HOME'] = '/tmp'  # Ensure a writable home directory
+            
             result = subprocess.run(
                 command_str, 
                 shell=True,
                 capture_output=True, 
                 text=True, 
-                timeout=30
+                timeout=30,
+                env=env
             )
             
             # Format output similar to ShellTool
@@ -244,7 +252,18 @@ def build_validation_shell_tool():
             if result.stdout:
                 output_parts.append(result.stdout.strip())
             if result.stderr:
-                output_parts.append(f"STDERR: {result.stderr.strip()}")
+                # Filter out common stty errors that are not critical
+                stderr_lines = result.stderr.strip().split('\n')
+                filtered_stderr = []
+                for line in stderr_lines:
+                    if not ('stty:' in line and 'Inappropriate ioctl for device' in line):
+                        filtered_stderr.append(line)
+                
+                if filtered_stderr:
+                    stderr_text = '\n'.join(filtered_stderr).strip()
+                    if stderr_text:
+                        output_parts.append(f"STDERR: {stderr_text}")
+            
             if result.returncode != 0:
                 output_parts.append(f"Return code: {result.returncode}")
             
